@@ -1,0 +1,527 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+
+        body {
+            background: #e7e7e7;
+        }
+
+        button {
+            background: linear-gradient(to top, #eeeeee, #aaaaaa);
+            box-shadow: inset 0 0 0 1px #888888;
+            border: none;
+            border-radius: 5px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        button:hover {
+            box-shadow: inset 0 0 0 1px #999999, 0 2px 4px #666666;
+        }
+
+        button:active {
+            box-shadow: inset 0 0 0 1px #999999, inset 0 5px 30px #666666;
+        }
+
+        .text {
+            font-size: 25px;
+            height: 612px;
+            background: #f4f4f4;
+            overflow-y: scroll;
+        }
+
+        .unknown {
+            color: red;
+        }
+
+        .new {
+            color: #2020B0;
+        }
+
+        .pinyin-unknown {
+            background: #FFEAEA;
+            border: 1px solid #BFBFBF;
+            border-radius: 5px;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<div id="container" style="width: 900px; height: 700px; margin: auto; border: 1px solid black">
+    <div style="height: 700px; background: #cdcdff;">
+        <div id="insert_new">
+            <button id="read_update" onclick="textUpdate()">Update</button>
+            <button id="read_insert_new" onclick="readNewText()">InsertNew</button>
+        </div>
+        <label for="text_insert"></label><textarea id="text_insert" style="width: 900px; height: 673px"></textarea>
+        <button id="text_go" onclick="textGo()">Go</button>
+        <button id="ordered" onclick="ordered()">Ordered</button>
+        <div id="text_div" class="text" onmouseup="textDivMouseUp()" style="display: none"></div>
+        <div id="char_info">
+            <span id="char_glyph_info"></span>
+            <span id="char_glyph_meaning"></span>
+            <label for="char_input"></label><input id="char_input" onkeyup="updateReadWordPanel()">
+            <button id="char_edit" onclick="onEditCharClick()">Edit</button>
+            <button id="char_save" onclick="onSaveCharClick()">Save</button>
+        </div>
+        <div id="pinyin_info" style="margin-top: 5px">
+            <span id="char_pinyin_value"></span>
+            <label for="pinyin_input"></label><input id="pinyin_input" onkeyup="updateReadWordPanel()">
+            <button id="pinyin_edit" onclick="onEditPinyinClick()">Edit</button>
+            <button id="pinyin_save" onclick="onSavePinyinClick()">Save</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+    var ziOrder = {};
+    var chars = {};
+    var words = {};
+    var pinyins = {};
+    var charsKnown = {};
+    var charsNew = {};
+
+    var currentText = "";
+
+    var selection = {text: "", charEdit: false, pinyinEdit: false};
+
+
+    show = function (id) {
+        document.getElementById(id).style.display = "";
+    };
+
+    hide = function (id) {
+        document.getElementById(id).style.display = "none";
+    };
+
+    enable = function (id) {
+        document.getElementById(id).disabled = false;
+    };
+
+    disable = function (id) {
+        document.getElementById(id).disabled = true;
+    };
+
+    getText = function (id) {
+        return document.getElementById(id).value;
+    };
+
+    getValue = function (id) {
+        return document.getElementById(id).value;
+    };
+
+    setText = function (id, text) {
+        document.getElementById(id).textContent = text;
+    };
+
+    setValue = function (id, text) {
+        document.getElementById(id).value = text;
+    };
+
+
+
+    setHtml = function (id, html) {
+        document.getElementById(id).innerHTML = html;
+    };
+
+    function loadZi() {
+        var ziDict = JSON.parse(window.localStorage["zi_dict"]);
+        for (var i = 0; i < ziDict.length; i++) {
+            var key = ziDict[i].z;
+            ziOrder[key] = ziDict[i].o;
+        }
+    }
+
+    function restSend(url, data) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, false);
+        xhr.send(JSON.stringify(data));
+        if (xhr.status == 200) {
+            return xhr.responseText;
+        } else {
+            throw "error";
+        }
+    }
+
+    function loadData() {
+        var data = {chars: [], pinyins: [], words: [], secret: "xuehanyu"};
+        try {
+            var respData = restSend("rest/sync", data);
+        } catch (err) {
+            alert("Cannot send request " + err);
+            return;
+        }
+        var resp = JSON.parse(respData);
+        var secret = resp.secret;
+        if (secret != "xuehanyu") {
+            alert("Sync error: wrong secret");
+        } else {
+            var _chars = resp.chars;
+            charsKnown = {};
+            charsNew = {};
+            for (var i = 0; i < _chars.length; i++) {
+                var stage = _chars[i].stage;
+                if (stage == 1 || stage == 2) {
+                    charsKnown[_chars[i].word] = true;
+                } else {
+                    charsNew[_chars[i].word] = true;
+                }
+                chars[_chars[i].word] = _chars[i];
+            }
+            var pins = resp.pinyins;
+            pinyins = {};
+            for (i = 0; i < pins.length; i++) {
+                pinyins[pins[i].word] = pins[i];
+            }
+            var _words = resp.words;
+            for (i = 0; i < _words.length; i++) {
+                words[_words[i].word] = _words[i];
+            }
+        }
+    }
+
+    function updateReadWordPanel() {
+        var sel = selection.text;
+        if (sel.length == 1 && ziOrder[sel] != null) {
+            show("char_glyph_info");
+            setText("char_glyph_info", sel + " (" + ziOrder[sel] + ")");
+            if (selection.charEdit || chars[sel] == null) {
+                hide("char_glyph_meaning");
+                show("char_input");
+                hide("char_edit");
+                var inputText = getText("char_input");
+                if (inputText.length > 0) {
+                    show("char_save");
+                } else {
+                    hide("char_save");
+                }
+            } else {
+                show("char_glyph_meaning");
+                setText("char_glyph_meaning", chars[sel].meaning == "" ? "??" : chars[sel].meaning);
+                hide("char_input");
+                show("char_edit");
+                hide("char_save");
+            }
+            // pinyins
+            if (selection.pinyinEdit || pinyins[sel] == null) {
+                hide("char_pinyin_value");
+                show("pinyin_input");
+                hide("pinyin_edit");
+                inputText = getText("pinyin_input");
+                if (inputText.length > 0) {
+                    show("pinyin_save");
+                } else {
+                    hide("pinyin_save");
+                }
+            } else {
+                show("char_pinyin_value");
+                setText("char_pinyin_value", pinyins[sel].pinyin);
+                hide("pinyin_input");
+                show("pinyin_edit");
+                hide("pinyin_save");
+            }
+        } else {
+            hide("char_glyph_info");
+            hide("char_glyph_meaning");
+            hide("char_input");
+            hide("char_edit");
+            hide("char_save");
+            hide("char_pinyin_value");
+            hide("pinyin_input");
+            hide("pinyin_edit");
+            hide("pinyin_save");
+        }
+        return;
+        var is_word;
+        var info = "";
+        var meaning = "";
+        var cur_stage = 0;
+        if (read_word_selection.length == 1) {
+            if (zi_order[read_word_selection] != null) {
+                is_word = true;
+                var w = null;
+                for (var i = 0; i < chars.length; i++) {
+                    if (chars[i].word == read_word_selection) {
+                        w = chars[i];
+                        break;
+                    }
+                }
+                info = read_word_selection + " (" + zi_order[read_word_selection] + ") ";
+                if (w != null) {
+                    cur_stage = w.stage;
+                    if (cur_stage == 1) {
+                        info += "T";
+                    } else if (cur_stage == 2) {
+                        info += "L";
+                    } else {
+                        info += "N";
+                    }
+                    meaning = w.meaning;
+                } else {
+                    read_word_editing = true;
+                }
+            } else {
+                is_word = false;
+            }
+        } else if (read_word_selection.length > 1 && read_word_selection.length < 7) {
+            is_word = true;
+            for (i = 0; i < read_word_selection.length; i++) {
+                if (zi_order[read_word_selection[i]] == null) {
+                    is_word = false;
+                    break;
+                }
+            }
+            if (is_word) {
+                var word = null;
+                info = read_word_selection;
+                for (i = 0; i < words.length; i++) {
+                    if (words[i].word == read_word_selection) {
+                        word = words[i];
+                        break;
+                    }
+                }
+                if (word != null) {
+                    meaning = word.meaning;
+                } else {
+                    read_word_editing = true;
+                }
+            }
+        }
+        $("#read_text_glyph_info").html(info);
+        $("#read_text_glyph_meaning").html(read_word_editing ? "" : meaning);
+        if (read_word_editing) {
+            var curMeaning = $("#read_text_input").show().val();
+            $("#read_save_meaning").show().prop("disabled", curMeaning.length == 0);
+        } else {
+            $("#read_text_input").hide();
+            $("#read_save_meaning").hide();
+        }
+        if (is_word && !read_word_editing) {
+            $("#read_edit_meaning").show();
+        } else {
+            $("#read_edit_meaning").hide();
+        }
+    }
+
+    onEditCharClick = function () {
+
+    };
+
+    onSaveCharClick = function () {
+        var char = selection.text;
+        var meaning = getValue("char_input");
+        var c = {word: char, meaning: meaning};
+        if (char.length == 1 && ziOrder[char] != null && meaning.length > 0) {
+            try {
+                restSend("rest/update_char", {word: char, meaning: meaning});
+            } catch (err) {
+                alert("Cannot update char");
+                return;
+            }
+        } else {
+            return;
+        }
+        chars[char] = c;
+        charsNew[char] = true;
+        selection.charEdit = false;
+        updateReadWordPanel();
+        textUpdate();
+    };
+
+    onEditPinyinClick = function () {
+
+    };
+
+    onSavePinyinClick = function () {
+        var char = selection.text;
+        var pinyin = getValue("pinyin_input");
+        var p = {word: char, pinyin: pinyin};
+        if (char.length == 1 && ziOrder[char] != null && pinyin.length > 0) {
+            try {
+                restSend("rest/update_pinyin", p);
+            } catch (err) {
+                alert("Cannot update pinyin");
+                return;
+            }
+        } else {
+            return;
+        }
+        pinyins[char] = p;
+        selection.pinyinEdit = false;
+        updateReadWordPanel();
+        textUpdate();
+    };
+
+
+    function onEditMeaningClick() {
+        var sel = read_word_selection;
+        if (sel.length == 1) {
+            var w = null;
+            for (var i = 0; i < chars.length; i++) {
+                if (chars[i].word == sel) {
+                    w = chars[i];
+                    break;
+                }
+            }
+            if (w != null) {
+                $("#read_text_input").val(w.meaning);
+                read_word_editing = true;
+            }
+        }
+        updateReadWordPanel();
+    }
+
+    function onSaveMeaningClick() {
+/*        var new_meaning = getText("read_text_input");
+        if (read_word_selection.length == 1) {
+            var c = {};
+            c.word = read_word_selection;
+            c.meaning = new_meaning;
+            c.stage = 3;
+            try {
+                var data = [c];
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "rest/add_chars", false);
+                xhr.send(JSON.stringify(data));
+                if (xhr.status == 200) {
+                    loadData();
+                    //  alert("Add success");
+
+                } else {
+                    alert("Cannot add")
+                }
+            }
+            catch (err) {
+                alert("Add error: " + err);
+            }
+            textUpdate();
+        }*/
+    }
+
+
+    function textDivMouseUp() {
+        selection.text = window.getSelection().toString();
+        setValue("char_input", "");
+        setValue("pinyin_input", "");
+        updateReadWordPanel();
+    }
+
+    function getNow() {
+        return Date.now() / 1000 | 0;
+    }
+
+    function setMode(mode) {
+        // 1 - insert
+        // 2 - read
+        if (mode == 1) {
+            hide("insert_new");
+            show("text_insert");
+            show("text_go");
+            show("ordered");
+            hide("text_div");
+            hide("char_info");
+            hide("pinyin_info");
+        } else {
+            show("insert_new");
+            hide("text_insert");
+            hide("text_go");
+            hide("ordered");
+            show("text_div");
+            show("char_info");
+            show("pinyin_info");
+        }
+    }
+
+
+    /* Text manipulation methods */
+
+    // prints all characters ordered by frequency
+    function ordered() {
+        currentText = "";
+        var zi_dict = JSON.parse(window.localStorage["zi_dict"]);
+        for (var i = 0; i < 6000; i++) {
+            currentText += zi_dict[i].z;
+        }
+        setMode(2);
+        textUpdate();
+    }
+
+    function textGo() {
+        currentText = getText("text_insert");
+        setMode(2);
+        textUpdate();
+    }
+
+    function readNewText() {
+        setMode(1);
+    }
+
+    function textUpdate() {
+        var text = "";
+        var lines = currentText.split("\n");
+        for (var i = 0; i < lines.length; i++) {
+            text += processTextLine(lines[i].trim());
+        }
+        setHtml("text_div", text);
+    }
+
+    function processTextLine(line) {
+        var text = "<p style='text-indent: 20px'>";
+        var prevClass = "";
+        for (var i = 0; i < line.length; i++) {
+            var cur = line[i];
+            var curClass;
+            if (ziOrder[cur] == undefined) {
+                // not a character
+                curClass = "";
+            } else {
+                if (charsKnown[cur]) {
+                    curClass = "";
+                } else if (charsNew[cur]) {
+                    curClass = "new";
+                } else {
+                    curClass = "unknown";
+                }
+                if (pinyins[cur] == undefined) {
+                    if (curClass == "") {
+                        curClass = "pinyin-unknown";
+                    } else {
+                        curClass += " pinyin-unknown";
+                    }
+                }
+            }
+            if (curClass != prevClass) {
+                if (prevClass != "") {
+                    text += "</span>";
+                }
+                if (curClass != "") {
+                    text += '<span class="' + curClass + '">';
+                }
+            }
+            text += cur;
+            prevClass = curClass;
+        }
+        if (curClass != "") {
+            text += "</span>";
+        }
+        text += "</p>";
+        return text;
+    }
+
+    function init() {
+        loadZi();
+        loadData();
+        setMode(1);
+    }
+
+    init();
+
+</script>
+
+</body>
+</html>
