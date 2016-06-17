@@ -10,14 +10,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import ru.ekaerovets.model.*;
+import ru.ekaerovets.model.Char;
+import ru.ekaerovets.model.MobileSyncData;
+import ru.ekaerovets.model.Pinyin;
+import ru.ekaerovets.service.DSLHolder;
 import ru.ekaerovets.service.PinyinParser;
 import ru.ekaerovets.service.ZiService;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.lang.reflect.Type;
-import java.util.List;
+import java.util.Map;
 
 /**
  * @author karyakin dmitry
@@ -32,77 +34,60 @@ public class MainController {
     @Autowired
     private PinyinParser pinyinParser;
 
+    @Autowired
+    private DSLHolder dslHolder;
+
     private Gson gson = new GsonBuilder().create();
 
-    @RequestMapping(method = RequestMethod.POST, value = "/sync")
-    public void sync(@RequestBody String input, HttpServletResponse resp) throws IOException {
-        SyncData data = gson.fromJson(input, SyncData.class);
-        if (!data.getSecret().equals("xuehanyu")) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-        SyncData res = ziService.syncData(data);
-        String json = gson.toJson(res);
-        resp.getWriter().write(json);
-        resp.getWriter().close();
-    }
-
+    /**
+     * Sync data with mobile application
+     */
     @RequestMapping(method = RequestMethod.POST, value = "/sync_pinyin")
     private void syncPinyin(@RequestBody String input, HttpServletResponse resp) throws IOException {
-        Type type = new TypeToken<List<PinyinDroid>>() {
-        }.getType();
-        List<PinyinDroid> data = gson.fromJson(input, type);
-        List<PinyinDroid> res = ziService.syncPinyins(data);
+        MobileSyncData data = gson.fromJson(input, MobileSyncData.class);
+        MobileSyncData res = ziService.syncMobile(data);
         String json = gson.toJson(res);
         resp.getWriter().write(json);
         resp.getWriter().close();
     }
 
-    @RequestMapping(method = RequestMethod.POST, value = "/add_chars")
-    public ResponseEntity<Void> addChars(@RequestBody String input) {
-        Type type = new TypeToken<List<Char>>() {
-        }.getType();
-        List<Char> data = gson.fromJson(input, type);
-        ziService.storeChars(data, false);
+    /**
+     * Returns data for the web-application
+     */
+    @RequestMapping(method = RequestMethod.GET, value = "/data")
+    private void getData(HttpServletResponse resp) throws IOException {
+        MobileSyncData data = ziService.loadData();
+        String json = gson.toJson(data);
+        resp.getWriter().write(json);
+        resp.getWriter().close();
+    }
+
+    @RequestMapping(method = RequestMethod.POST, value = "/upsert_pinyin")
+    public ResponseEntity<Void> upsertPinyin(@RequestBody String input) {
+        Pinyin pinyin = gson.fromJson(input, Pinyin.class);
+        ziService.upsertPinyin(pinyin);
         return ResponseEntity.ok().build();
     }
 
-    @RequestMapping(method = RequestMethod.GET, value = "/update_pinyin/{count}")
-    public ResponseEntity<Void> updatePinyins(@PathVariable int count) {
-        ziService.updatePinyins(count);
+    @RequestMapping(method = RequestMethod.POST, value = "/upsert_char")
+    public ResponseEntity<Void> upsertChar(@RequestBody String input) {
+        Char ch = gson.fromJson(input, Char.class);
+        ziService.upsertChar(ch);
         return ResponseEntity.ok().build();
     }
 
-    @RequestMapping(method = RequestMethod.POST, value = "/add_words")
-    public ResponseEntity<Void> addWords(@RequestBody String input) {
-        Type type = new TypeToken<List<Word>>() {
-        }.getType();
-        List<Word> words = gson.fromJson(input, type);
-        ziService.addWords(words);
+    @RequestMapping(method = RequestMethod.POST, value = "/set_stage")
+    public ResponseEntity<Void> setStage(@RequestBody String input) {
+        Map<String, String> params = gson.fromJson(input, new TypeToken<Map<String, String>>() {
+        }.getType());
+        ziService.setStage(params.get("word"), Integer.parseInt(params.get("stage")), "true".equals(params.get("chars")));
         return ResponseEntity.ok().build();
     }
 
-    @RequestMapping(method = RequestMethod.POST, value = "/insert_pinyins")
-    public ResponseEntity<Void> insertPinyins(@RequestBody String input) {
-        Type type = new TypeToken<List<Pinyin>>() {
-        }.getType();
-        List<Pinyin> pinyins = gson.fromJson(input, type);
-        ziService.insertPinyins(pinyins);
-        return ResponseEntity.ok().build();
-    }
-
-    @RequestMapping(method = RequestMethod.POST, value = "/update_char")
-    public ResponseEntity<Void> insertChar(@RequestBody String input) {
-        Char c = gson.fromJson(input, Char.class);
-        ziService.updateChar(c);
-        return ResponseEntity.ok().build();
-    }
-
-    @RequestMapping(method = RequestMethod.POST, value = "/update_pinyin")
-    public ResponseEntity<Void> insertPinyin(@RequestBody String input) {
-        Pinyin p = gson.fromJson(input, Pinyin.class);
-        ziService.updatePinyin(p);
-        return ResponseEntity.ok().build();
+    @RequestMapping(method = RequestMethod.GET, value = "/lookup/{word}")
+    public void lookup(@PathVariable String word, HttpServletResponse resp) throws IOException {
+        resp.getWriter().write(gson.toJson(dslHolder.lookup(word)));
+        resp.getWriter().flush();
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/table")

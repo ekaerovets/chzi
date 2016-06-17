@@ -8,22 +8,14 @@ public class Char {
 
     private String word;
     private String meaning;
-    private long due;
-    private long interval;
     private int stage;
-    private Boolean marked;
-    private String pinyin;
+    private double diff;
+    private boolean override;
+    private boolean mark;
+    private String example;
 
     public Char() {
 
-    }
-
-    public Char(String word, String meaning, long due, long interval, int stage) {
-        this.word = word;
-        this.meaning = meaning;
-        this.due = due;
-        this.interval = interval;
-        this.stage = stage;
     }
 
     public String getWord() {
@@ -42,22 +34,6 @@ public class Char {
         this.meaning = meaning;
     }
 
-    public long getDue() {
-        return due;
-    }
-
-    public void setDue(long due) {
-        this.due = due;
-    }
-
-    public long getInterval() {
-        return interval;
-    }
-
-    public void setInterval(long interval) {
-        this.interval = interval;
-    }
-
     public int getStage() {
         return stage;
     }
@@ -66,19 +42,36 @@ public class Char {
         this.stage = stage;
     }
 
-    public Boolean isMarked() {
-        return marked;
+    public double getDiff() {
+        return diff;
     }
 
-    public void setMarked(Boolean marked) {
-        this.marked = marked;
+    public void setDiff(double diff) {
+        this.diff = diff;
     }
 
-    public String getPinyin() {
-        return pinyin;
+    public boolean isOverride() {
+        return override;
     }
 
-    public void setPinyin(String pinyin) {
-        this.pinyin = pinyin;
+    public void setOverride(boolean override) {
+        this.override = override;
     }
+
+    public boolean isMark() {
+        return mark;
+    }
+
+    public void setMark(boolean mark) {
+        this.mark = mark;
+    }
+
+    public String getExample() {
+        return example;
+    }
+
+    public void setExample(String example) {
+        this.example = example;
+    }
+
 }

@@ -93,13 +93,13 @@ public class PinyinParser {
     private String charInfoToHtml(List<CharInfo> input) {
         StringBuilder res = new StringBuilder();
         int currentTone = 0;
-        int count = 0;
+     //   int count = 0;
         for (CharInfo info : input) {
             int newTone = info.tone;
             if (newTone != currentTone && currentTone != 0) {
                 res.append("</span>");
             }
-            count++;
+          //  count++;
 /*            if (count == 9) {
                 res.append("<br>");
                 count = 1;

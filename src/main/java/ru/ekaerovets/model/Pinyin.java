@@ -1,7 +1,5 @@
 package ru.ekaerovets.model;
 
-import com.google.gson.annotations.SerializedName;
-
 /**
  * @author karyakin dmitry
  *         date 31.10.15.
@@ -10,12 +8,14 @@ public class Pinyin {
 
     private String word;
     private String pinyin;
-    private Double diff;
+    private int stage;
+    private double diff;
+    private boolean override;
+    private boolean mark;
+    private String example;
 
-    public Pinyin(String word, String pinyin, Double diff) {
-        this.word = word;
-        this.pinyin = pinyin;
-        this.diff = diff;
+    public Pinyin() {
+
     }
 
     public String getWord() {
@@ -34,11 +34,43 @@ public class Pinyin {
         this.pinyin = pinyin;
     }
 
-    public Double getDiff() {
+    public int getStage() {
+        return stage;
+    }
+
+    public void setStage(int stage) {
+        this.stage = stage;
+    }
+
+    public double getDiff() {
         return diff;
     }
 
-    public void setDiff(Double diff) {
+    public void setDiff(double diff) {
         this.diff = diff;
+    }
+
+    public boolean isOverride() {
+        return override;
+    }
+
+    public void setOverride(boolean override) {
+        this.override = override;
+    }
+
+    public boolean isMark() {
+        return mark;
+    }
+
+    public void setMark(boolean mark) {
+        this.mark = mark;
+    }
+
+    public String getExample() {
+        return example;
+    }
+
+    public void setExample(String example) {
+        this.example = example;
     }
 }

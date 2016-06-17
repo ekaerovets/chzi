@@ -31,18 +31,76 @@
             overflow-y: scroll;
         }
 
-        .unknown {
+        .char2 {
+            color: orange;
+        }
+
+        .char3 {
+            color: blue;
+        }
+
+        .char4 {
+            color: #85009a;
+        }
+
+        .char5 {
             color: red;
         }
 
-        .new {
-            color: #2020B0;
+        .pinyin2, .pinyin3, .pinyin4, .pinyin5 {
+            border: 1px solid gray;
+            border-radius: 3px;
         }
 
-        .pinyin-unknown {
-            background: #FFEAEA;
-            border: 1px solid #BFBFBF;
-            border-radius: 5px;
+        .pinyin2 {
+            background: #d1ffcf;
+        }
+
+        .pinyin3 {
+            background: #e7e7ff;
+        }
+
+        .pinyin4 {
+            background: #ffff98;
+        }
+
+        .pinyin5 {
+            background: #ffd1d1;
+        }
+
+        .fragment {
+            border: 2px solid #FF0000;
+            border-radius: 8px;
+            background: #00FFF9;
+        }
+
+        /* lookup */
+        .pinyin {
+
+        }
+
+        .meaning {
+
+        }
+
+        .m1 {
+
+        }
+
+        .m2 {
+            margin-left: 10px;
+        }
+
+        .m4 {
+            margin-left: 20px;
+        }
+
+        .ex {
+            color: #626262;
+        }
+
+        .c {
+            color: green;
         }
 
     </style>
@@ -53,260 +111,552 @@
 <div id="container" style="width: 900px; height: 700px; margin: auto; border: 1px solid black">
     <div style="height: 700px; background: #cdcdff;">
         <div id="insert_new">
-            <button id="read_update" onclick="textUpdate()">Update</button>
+            <button id="read_update" onclick="serverSync()">Server sync</button>
             <button id="read_insert_new" onclick="readNewText()">InsertNew</button>
+            <button id="toggle_fragment" onclick="ui.toggleFragment()">Toggle fragment</button>
         </div>
         <label for="text_insert"></label><textarea id="text_insert" style="width: 900px; height: 673px"></textarea>
         <button id="text_go" onclick="textGo()">Go</button>
         <button id="ordered" onclick="ordered()">Ordered</button>
         <div id="text_div" class="text" onmouseup="textDivMouseUp()" style="display: none"></div>
         <div id="char_info">
+            <button id="char_trivia" onclick="ui.charTrivia()">T</button>
+            <button id="char_learn" onclick="ui.charLearn()">L</button>
             <span id="char_glyph_info"></span>
             <span id="char_glyph_meaning"></span>
-            <label for="char_input"></label><input id="char_input" onkeyup="updateReadWordPanel()">
+            <label for="char_input"></label><input id="char_input" onkeyup="ui.updateReadWordPanel()">
             <button id="char_edit" onclick="onEditCharClick()">Edit</button>
-            <button id="char_save" onclick="onSaveCharClick()">Save</button>
+            <button id="char_save" onclick="ui.onSaveCharClick()">Save</button>
         </div>
         <div id="pinyin_info" style="margin-top: 5px">
+            <button id="pinyin_trivia" onclick="ui.pinyinTrivia()">T</button>
+            <button id="pinyin_learn" onclick="ui.pinyinLearn()">L</button>
             <span id="char_pinyin_value"></span>
-            <label for="pinyin_input"></label><input id="pinyin_input" onkeyup="updateReadWordPanel()">
+            <label for="pinyin_input"></label><input id="pinyin_input" onkeyup="ui.updateReadWordPanel()">
             <button id="pinyin_edit" onclick="onEditPinyinClick()">Edit</button>
-            <button id="pinyin_save" onclick="onSavePinyinClick()">Save</button>
+            <button id="pinyin_save" onclick="ui.onSavePinyinClick()">Save</button>
         </div>
     </div>
+    <div id="lookup" style="max-height: 200px; overflow-y: scroll"></div>
 
 </div>
 
 <script>
 
-    var ziOrder = {};
-    var chars = {};
-    var words = {};
-    var pinyins = {};
-    var charsKnown = {};
-    var charsNew = {};
-
-    var currentText = "";
-
-    var selection = {text: "", charEdit: false, pinyinEdit: false};
-
-
-    show = function (id) {
-        document.getElementById(id).style.display = "";
-    };
-
-    hide = function (id) {
-        document.getElementById(id).style.display = "none";
-    };
-
-    enable = function (id) {
-        document.getElementById(id).disabled = false;
-    };
-
-    disable = function (id) {
-        document.getElementById(id).disabled = true;
-    };
-
-    getText = function (id) {
-        return document.getElementById(id).value;
-    };
-
-    getValue = function (id) {
-        return document.getElementById(id).value;
-    };
-
-    setText = function (id, text) {
-        document.getElementById(id).textContent = text;
-    };
-
-    setValue = function (id, text) {
-        document.getElementById(id).value = text;
-    };
-
-
-
-    setHtml = function (id, html) {
-        document.getElementById(id).innerHTML = html;
-    };
-
-    function loadZi() {
-        var ziDict = JSON.parse(window.localStorage["zi_dict"]);
+    var DataHolder = function () {
+        this.orderMap = {};
+        let ziDict = JSON.parse(window.localStorage["zi_dict"]);
         for (var i = 0; i < ziDict.length; i++) {
-            var key = ziDict[i].z;
-            ziOrder[key] = ziDict[i].o;
+            let key = ziDict[i].z;
+            this.orderMap[key] = ziDict[i].o;
         }
-    }
+    };
 
-    function restSend(url, data) {
+    DataHolder.prototype.loadFromServer = function () {
+
+        // 1 - trivia, 2 - learning, 3 - new, 4 - queue
+        function getType(diff, stage) {
+            if (stage == 1) {
+                return 1;
+            } else if (stage == 2) {
+                return diff < 0 ? 4 : 2;
+            } else {
+                return 3;
+            }
+        }
+
+        /** Load pinyins and characters from server */
+        try {
+            var respData = this.restSend("rest/data", null, true);
+        } catch (err) {
+            alert("Cannot send request " + err);
+            return;
+        }
+
+        let resp = JSON.parse(respData);
+        let _chars = resp.chars;
+        this.charStageMap = {};
+        this.charMap = {};
+        for (let i = 0; i < _chars.length; i++) {
+            let cur = _chars[i];
+            this.charStageMap[cur.word] = getType(cur.diff, cur.stage);
+            this.charMap[cur.word] = cur;
+        }
+        var pins = resp.pinyins;
+        this.pinyinStageMap = {};
+        this.pinyinMap = {};
+        for (let i = 0; i < pins.length; i++) {
+            let cur = pins[i];
+            this.pinyinStageMap[cur.word] = getType(cur.diff, cur.stage);
+            this.pinyinMap[cur.word] = cur;
+        }
+
+    };
+
+    DataHolder.prototype.getIndex = function(word) {
+        return this.orderMap[word];
+    };
+
+    DataHolder.prototype.getChar = function(word) {
+        return this.charMap[word];
+    };
+
+    DataHolder.prototype.getPinyin = function(word) {
+        return this.pinyinMap[word];
+    };
+
+    DataHolder.prototype.getCharStage = function(word) {
+        return this.charStageMap[word];
+    };
+
+    DataHolder.prototype.getPinyinStage = function(word) {
+        return this.pinyinStageMap[word];
+    };
+
+    DataHolder.prototype.setCharState = function(word, state) {
+        if (!this.charStageMap[word]) {
+            throw "Not found!"
+        }
+        if (state == 1) {
+            this.charMap[word].stage = 1;
+            this.charStageMap[word] = 1;
+        } else if (state == 2) {
+            this.charMap[word].stage = 2;
+            this.charMap[word].diff = -1;
+            this.charStageMap[word] = 4;
+        }
+        this.restSend("rest/set_stage", {word: word, stage: state, chars: true});
+    };
+
+    DataHolder.prototype.insertChar = function(char) {
+        this.restSend("rest/upsert_char", char);
+        this.charMap[char.word] = char;
+        this.charStageMap[char.word] = 3;
+    };
+
+    DataHolder.prototype.setPinyinState = function(word, state) {
+        if (!this.pinyinStageMap[word]) {
+            throw "Not found!"
+        }
+        if (state == 1) {
+            this.pinyinMap[word].stage = 1;
+            this.pinyinStageMap[word] = 1;
+        } else if (state == 2) {
+            this.pinyinMap[word].stage = 2;
+            this.pinyinMap[word].diff = -1;
+            this.pinyinStageMap[word] = 4;
+        }
+        this.restSend("rest/set_stage", {word: word, stage: state, chars: false});
+    };
+
+    DataHolder.prototype.insertPinyin = function(pinyin) {
+        this.restSend("rest/upsert_pinyin", pinyin);
+        this.pinyinMap[pinyin.word] = pinyin;
+        this.pinyinStageMap[pinyin.word] = 3;
+    };
+
+    DataHolder.prototype.restSend = function(url, data, asGet) {
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", url, false);
+        xhr.open(asGet ? "GET" : "POST", url, false);
         xhr.send(JSON.stringify(data));
         if (xhr.status == 200) {
             return xhr.responseText;
         } else {
             throw "error";
         }
-    }
+    };
 
-    function loadData() {
-        var data = {chars: [], pinyins: [], words: [], secret: "xuehanyu"};
-        try {
-            var respData = restSend("rest/sync", data);
-        } catch (err) {
-            alert("Cannot send request " + err);
-            return;
-        }
-        var resp = JSON.parse(respData);
-        var secret = resp.secret;
-        if (secret != "xuehanyu") {
-            alert("Sync error: wrong secret");
-        } else {
-            var _chars = resp.chars;
-            charsKnown = {};
-            charsNew = {};
-            for (var i = 0; i < _chars.length; i++) {
-                var stage = _chars[i].stage;
-                if (stage == 1 || stage == 2) {
-                    charsKnown[_chars[i].word] = true;
+    var holder = new DataHolder();
+    holder.loadFromServer();
+
+
+    var selection = {text: "", charEdit: false, pinyinEdit: false};
+
+    /*
+    UI ENGINE
+    */
+
+    var UI = function() {
+
+    };
+
+    UI.prototype.init = function() {
+        let data = window.localStorage["fragments"];
+        this.fragments = {};
+        if (data) {
+            let items = JSON.parse(data);
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                let key = item[0];
+                if (this.fragments[key]) {
+                    this.fragments[key].push(item);
                 } else {
-                    charsNew[_chars[i].word] = true;
+                    this.fragments[key] = [item];
                 }
-                chars[_chars[i].word] = _chars[i];
-            }
-            var pins = resp.pinyins;
-            pinyins = {};
-            for (i = 0; i < pins.length; i++) {
-                pinyins[pins[i].word] = pins[i];
-            }
-            var _words = resp.words;
-            for (i = 0; i < _words.length; i++) {
-                words[_words[i].word] = _words[i];
             }
         }
-    }
+    };
 
-    function updateReadWordPanel() {
-        var sel = selection.text;
-        if (sel.length == 1 && ziOrder[sel] != null) {
-            show("char_glyph_info");
-            setText("char_glyph_info", sel + " (" + ziOrder[sel] + ")");
-            if (selection.charEdit || chars[sel] == null) {
-                hide("char_glyph_meaning");
-                show("char_input");
-                hide("char_edit");
-                var inputText = getText("char_input");
+    UI.prototype.show = function (id) {
+        document.getElementById(id).style.display = "";
+    };
+
+    UI.prototype.hide = function (id) {
+        document.getElementById(id).style.display = "none";
+    };
+
+/*    UI.prototype.enable = function (id) {
+        document.getElementById(id).disabled = false;
+    };
+
+    UI.prototype.disable = function (id) {
+        document.getElementById(id).disabled = true;
+    };*/
+
+    UI.prototype.getText = function (id) {
+        return document.getElementById(id).value;
+    };
+
+    UI.prototype.getValue = function (id) {
+        return document.getElementById(id).value;
+    };
+
+    UI.prototype.setText = function (id, text) {
+        document.getElementById(id).textContent = text;
+    };
+
+    UI.prototype.setValue = function (id, text) {
+        document.getElementById(id).value = text;
+    };
+
+    UI.prototype.setHtml = function (id, html) {
+        document.getElementById(id).innerHTML = html;
+    };
+
+    UI.prototype.setMode = function(mode) {
+        // 1 - insert
+        // 2 - read
+        if (mode == 1) {
+            this.hide("insert_new");
+            this.show("text_insert");
+            this.show("text_go");
+            this.show("ordered");
+            this.hide("text_div");
+            this.hide("char_info");
+            this.hide("pinyin_info");
+        } else {
+            this.show("insert_new");
+            this.hide("text_insert");
+            this.hide("text_go");
+            this.hide("ordered");
+            this.show("text_div");
+            this.show("char_info");
+            this.show("pinyin_info");
+        }
+    };
+
+    UI.prototype.updateReadWordPanel = function() {
+        let sel = selection.text;
+        if (sel.length == 1 && holder.getIndex(sel) != null) {
+            this.show("char_glyph_info");
+            this.setText("char_glyph_info", sel + " (" + holder.getIndex(sel) + ")");
+            let char = holder.getChar(sel);
+            if (char == null) {
+                this.hide("char_glyph_meaning");
+                this.show("char_input");
+                this.hide("char_edit");
+                let inputText = this.getText("char_input");
                 if (inputText.length > 0) {
-                    show("char_save");
+                    this.show("char_save");
                 } else {
-                    hide("char_save");
+                    this.hide("char_save");
                 }
             } else {
-                show("char_glyph_meaning");
-                setText("char_glyph_meaning", chars[sel].meaning == "" ? "??" : chars[sel].meaning);
-                hide("char_input");
-                show("char_edit");
-                hide("char_save");
+                this.show("char_glyph_meaning");
+                this.setText("char_glyph_meaning", char.meaning == "" ? "??" : char.meaning);
+                this.hide("char_input");
+                this.show("char_edit");
+                this.hide("char_save");
             }
             // pinyins
-            if (selection.pinyinEdit || pinyins[sel] == null) {
-                hide("char_pinyin_value");
-                show("pinyin_input");
-                hide("pinyin_edit");
-                inputText = getText("pinyin_input");
+            let pinyin = holder.getPinyin(sel);
+            if (pinyin == null) {
+                this.hide("char_pinyin_value");
+                this.show("pinyin_input");
+                this.hide("pinyin_edit");
+                let inputText = this.getText("pinyin_input");
                 if (inputText.length > 0) {
-                    show("pinyin_save");
+                    this.show("pinyin_save");
                 } else {
-                    hide("pinyin_save");
+                    this.hide("pinyin_save");
                 }
             } else {
-                show("char_pinyin_value");
-                setText("char_pinyin_value", pinyins[sel].pinyin);
-                hide("pinyin_input");
-                show("pinyin_edit");
-                hide("pinyin_save");
+                this.show("char_pinyin_value");
+                this.setText("char_pinyin_value", pinyin.pinyin);
+                this.hide("pinyin_input");
+                this.show("pinyin_edit");
+                this.hide("pinyin_save");
             }
         } else {
-            hide("char_glyph_info");
-            hide("char_glyph_meaning");
-            hide("char_input");
-            hide("char_edit");
-            hide("char_save");
-            hide("char_pinyin_value");
-            hide("pinyin_input");
-            hide("pinyin_edit");
-            hide("pinyin_save");
+            this.hide("char_glyph_info");
+            this.hide("char_glyph_meaning");
+            this.hide("char_input");
+            this.hide("char_edit");
+            this.hide("char_save");
+            this.hide("char_pinyin_value");
+            this.hide("pinyin_input");
+            this.hide("pinyin_edit");
+            this.hide("pinyin_save");
         }
-        return;
-        var is_word;
-        var info = "";
-        var meaning = "";
-        var cur_stage = 0;
-        if (read_word_selection.length == 1) {
-            if (zi_order[read_word_selection] != null) {
-                is_word = true;
-                var w = null;
-                for (var i = 0; i < chars.length; i++) {
-                    if (chars[i].word == read_word_selection) {
-                        w = chars[i];
-                        break;
+    };
+
+    UI.prototype.textUpdate = function() {
+        let text = "";
+        let lines = this.currentText.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            text += this.processTextLine(lines[i].trim());
+        }
+        this.setHtml("text_div", text);
+    };
+
+    UI.prototype.processTextLine = function(line) {
+        let text = "<p style='text-indent: 20px'>";
+        let prevClass = "";
+        let fragLen = 0;
+        for (var i = 0; i < line.length; i++) {
+            var cur = line[i];
+            var curClass = "";
+            if (holder.getIndex(cur)) {
+                let stage = holder.getCharStage(cur);
+                if (!stage) {
+                    stage = 5;
+                }
+                if (stage > 1) {
+                    curClass = 'char' + stage;
+                }
+                stage = holder.getPinyinStage(cur);
+                if (!stage) {
+                    stage = 5;
+                }
+                if (stage > 1) {
+                    curClass += ' pinyin' + stage;
+                }
+
+                if (fragLen == 0) {
+                    if (this.fragments[cur]) {
+                        let frag = this.fragments[cur];
+                        for (let j = 0; j < frag.length; j++) {
+                            let item = frag[j];
+                            if (item == line.substring(i, i + item.length)) {
+                                fragLen = item.length;
+                                break;
+                            }
+                        }
                     }
                 }
-                info = read_word_selection + " (" + zi_order[read_word_selection] + ") ";
-                if (w != null) {
-                    cur_stage = w.stage;
-                    if (cur_stage == 1) {
-                        info += "T";
-                    } else if (cur_stage == 2) {
-                        info += "L";
-                    } else {
-                        info += "N";
-                    }
-                    meaning = w.meaning;
-                } else {
-                    read_word_editing = true;
+                if (fragLen > 0) {
+                    curClass = "fragment";
+                    fragLen--;
                 }
-            } else {
-                is_word = false;
             }
-        } else if (read_word_selection.length > 1 && read_word_selection.length < 7) {
-            is_word = true;
-            for (i = 0; i < read_word_selection.length; i++) {
-                if (zi_order[read_word_selection[i]] == null) {
-                    is_word = false;
+            if (curClass != prevClass) {
+                if (prevClass != "") {
+                    text += "</span>";
+                }
+                if (curClass != "") {
+                    text += '<span class="' + curClass + '">';
+                }
+            }
+            text += cur;
+            prevClass = curClass;
+        }
+        if (curClass != "") {
+            text += "</span>";
+        }
+        text += "</p>";
+        return text;
+    };
+
+    UI.prototype.setNewText = function(text) {
+        this.currentText = text;
+        this.setMode(2);
+        this.textUpdate();
+    };
+
+    UI.prototype.saveFragments = function() {
+        let items = [];
+        let keys = Object.keys(this.fragments);
+        for (let i = 0; i < keys.length; i++) {
+            let m = this.fragments[keys[i]];
+            for (let j = 0; j < m.length; j++) {
+                items.push(m[j]);
+            }
+        }
+        window.localStorage.setItem("fragments", JSON.stringify(items));
+    };
+
+    UI.prototype.toggleFragment = function() {
+        let sel = selection.text;
+        if (sel.length < 2 || sel.length > 10) {
+            return;
+        }
+        for (let i = 0; i < sel.length; i++) {
+            if (!holder.getIndex(sel[i])) {
+                return;
+            }
+        }
+        let key = sel[0];
+        if (this.fragments[key]) {
+            let items = this.fragments[key];
+            let found = false;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i] == sel) {
+                    items.splice(i, 1);
+                    found = true;
                     break;
                 }
             }
-            if (is_word) {
-                var word = null;
-                info = read_word_selection;
-                for (i = 0; i < words.length; i++) {
-                    if (words[i].word == read_word_selection) {
-                        word = words[i];
-                        break;
-                    }
-                }
-                if (word != null) {
-                    meaning = word.meaning;
-                } else {
-                    read_word_editing = true;
-                }
+            if (!found) {
+                items.push(sel);
             }
-        }
-        $("#read_text_glyph_info").html(info);
-        $("#read_text_glyph_meaning").html(read_word_editing ? "" : meaning);
-        if (read_word_editing) {
-            var curMeaning = $("#read_text_input").show().val();
-            $("#read_save_meaning").show().prop("disabled", curMeaning.length == 0);
         } else {
-            $("#read_text_input").hide();
-            $("#read_save_meaning").hide();
+            this.fragments[key] = [sel];
         }
-        if (is_word && !read_word_editing) {
-            $("#read_edit_meaning").show();
+        this.saveFragments();
+        this.textUpdate();
+    };
+
+    UI.prototype.charTrivia = function() {
+        let sel = selection.text;
+        if (sel.length == 1 && holder.getCharStage(sel) != null) {
+            holder.setCharState(sel, 1);
+            this.textUpdate();
+        }
+    };
+
+    UI.prototype.charLearn = function() {
+        let sel = selection.text;
+        if (sel.length == 1 && holder.getCharStage(sel) != null) {
+            holder.setCharState(sel, 2);
+            this.textUpdate();
+        }
+    };
+
+    UI.prototype.pinyinTrivia = function() {
+        let sel = selection.text;
+        if (sel.length == 1 && holder.getPinyinStage(sel) != null) {
+            holder.setPinyinState(sel, 1);
+            this.textUpdate();
+        }
+    };
+
+    UI.prototype.onSaveCharClick = function () {
+        var sel = selection.text;
+        var char = this.getValue("char_input");
+        var p = {word: sel, meaning: char};
+        if (sel.length == 1 && holder.getIndex(sel) != null && char.length > 0) {
+            try {
+                holder.insertChar(p);
+            } catch (err) {
+                alert("Cannot update char");
+                return;
+            }
         } else {
-            $("#read_edit_meaning").hide();
+            return;
         }
-    }
+        selection.charEdit = false;
+        this.updateReadWordPanel();
+        this.textUpdate();
+    };
+
+    UI.prototype.pinyinLearn = function() {
+        let sel = selection.text;
+        if (sel.length == 1 && holder.getPinyinStage(sel) != null) {
+            holder.setPinyinState(sel, 2);
+            this.textUpdate();
+        }
+    };
+
+    UI.prototype.onSavePinyinClick = function () {
+        var char = selection.text;
+        var pinyin = this.getValue("pinyin_input");
+        var p = {word: char, pinyin: pinyin};
+        if (char.length == 1 && holder.getIndex(char) != null && pinyin.length > 0) {
+            try {
+                holder.insertPinyin(p);
+            } catch (err) {
+                alert("Cannot update pinyin");
+                return;
+            }
+        } else {
+            return;
+        }
+        selection.pinyinEdit = false;
+        this.updateReadWordPanel();
+        this.textUpdate();
+    };
+
+    UI.prototype.lookupReplace = function(str) {
+        str = str.replace(/\[m1]/g, "<div class='m1'>");
+        str = str.replace(/\[m2]/g, "<div class='m2'>");
+        str = str.replace(/\[m4]/g, "<div class='m4'>");
+        str = str.replace(/\[\/m]/g, "</div>");
+        str = str.replace(/\[i]/g, "<i>");
+        str = str.replace(/\[\/i]/g, "</i>");
+        str = str.replace(/\[c]/g, "<span class='c'>");
+        str = str.replace(/\[\/c]/g, "</span>");
+        str = str.replace(/\[b]/g, "<b>");
+        str = str.replace(/\[\/b]/g, "</b>");
+        str = str.replace(/\[\*]/g, "");
+        str = str.replace(/\[\/\*]/g, "");
+        str = str.replace(/\[ex]/g, "<span class='ex'>");
+        str = str.replace(/\[\/ex]/g, "</span>");
+        str = str.replace(/\\]/g, "]");
+        str = str.replace(/\\\[/g, "[");
+        return str;
+    };
+
+    UI.prototype.processResp = function(resp) {
+        if (resp == "null") {
+            return "";
+        } else {
+            var r = JSON.parse(resp);
+            var pinyin = r.pinyin;
+            var meaning = r.meaning;
+            var res = "";
+            res += "<div class='pinyin'>" + this.lookupReplace(pinyin) + "</div>";
+            res += "<div class='meaning'>" + this.lookupReplace(meaning) + "</div>";
+            return res;
+        }
+    };
+
+    UI.prototype.lookup = function () {
+        var text = selection.text;
+        if (text.length > 0) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "rest/lookup/" + text, false);
+            xhr.send();
+            var resp;
+            if (xhr.status == 200) {
+                resp = xhr.responseText;
+                this.setHtml("lookup", this.processResp(resp))
+            } else {
+                this.setHtml("lookup", "");
+            }
+        } else {
+            this.setHtml("lookup", "");
+        }
+    };
+
+    var ui = new UI();
+    ui.init();
+    ui.setMode(1);
+
+
+    serverSync = function() {
+        holder.loadFromServer();
+        ui.textUpdate();
+    };
 
     onEditCharClick = function () {
 
@@ -337,26 +687,6 @@
 
     };
 
-    onSavePinyinClick = function () {
-        var char = selection.text;
-        var pinyin = getValue("pinyin_input");
-        var p = {word: char, pinyin: pinyin};
-        if (char.length == 1 && ziOrder[char] != null && pinyin.length > 0) {
-            try {
-                restSend("rest/update_pinyin", p);
-            } catch (err) {
-                alert("Cannot update pinyin");
-                return;
-            }
-        } else {
-            return;
-        }
-        pinyins[char] = p;
-        selection.pinyinEdit = false;
-        updateReadWordPanel();
-        textUpdate();
-    };
-
 
     function onEditMeaningClick() {
         var sel = read_word_selection;
@@ -376,150 +706,38 @@
         updateReadWordPanel();
     }
 
-    function onSaveMeaningClick() {
-/*        var new_meaning = getText("read_text_input");
-        if (read_word_selection.length == 1) {
-            var c = {};
-            c.word = read_word_selection;
-            c.meaning = new_meaning;
-            c.stage = 3;
-            try {
-                var data = [c];
-                var xhr = new XMLHttpRequest();
-                xhr.open("POST", "rest/add_chars", false);
-                xhr.send(JSON.stringify(data));
-                if (xhr.status == 200) {
-                    loadData();
-                    //  alert("Add success");
-
-                } else {
-                    alert("Cannot add")
-                }
-            }
-            catch (err) {
-                alert("Add error: " + err);
-            }
-            textUpdate();
-        }*/
-    }
-
 
     function textDivMouseUp() {
         selection.text = window.getSelection().toString();
-        setValue("char_input", "");
-        setValue("pinyin_input", "");
-        updateReadWordPanel();
+        ui.setValue("char_input", "");
+        ui.setValue("pinyin_input", "");
+        ui.updateReadWordPanel();
+        ui.lookup();
     }
-
-    function getNow() {
-        return Date.now() / 1000 | 0;
-    }
-
-    function setMode(mode) {
-        // 1 - insert
-        // 2 - read
-        if (mode == 1) {
-            hide("insert_new");
-            show("text_insert");
-            show("text_go");
-            show("ordered");
-            hide("text_div");
-            hide("char_info");
-            hide("pinyin_info");
-        } else {
-            show("insert_new");
-            hide("text_insert");
-            hide("text_go");
-            hide("ordered");
-            show("text_div");
-            show("char_info");
-            show("pinyin_info");
-        }
-    }
-
+    
 
     /* Text manipulation methods */
 
     // prints all characters ordered by frequency
     function ordered() {
-        currentText = "";
+        let text = "";
         var zi_dict = JSON.parse(window.localStorage["zi_dict"]);
         for (var i = 0; i < 6000; i++) {
-            currentText += zi_dict[i].z;
+            text += zi_dict[i].z;
         }
-        setMode(2);
-        textUpdate();
+        ui.setNewText(text);
     }
 
     function textGo() {
-        currentText = getText("text_insert");
-        setMode(2);
-        textUpdate();
+        ui.setNewText(ui.getText("text_insert"));
     }
 
     function readNewText() {
-        setMode(1);
+        ui.setMode(1);
     }
 
-    function textUpdate() {
-        var text = "";
-        var lines = currentText.split("\n");
-        for (var i = 0; i < lines.length; i++) {
-            text += processTextLine(lines[i].trim());
-        }
-        setHtml("text_div", text);
-    }
 
-    function processTextLine(line) {
-        var text = "<p style='text-indent: 20px'>";
-        var prevClass = "";
-        for (var i = 0; i < line.length; i++) {
-            var cur = line[i];
-            var curClass;
-            if (ziOrder[cur] == undefined) {
-                // not a character
-                curClass = "";
-            } else {
-                if (charsKnown[cur]) {
-                    curClass = "";
-                } else if (charsNew[cur]) {
-                    curClass = "new";
-                } else {
-                    curClass = "unknown";
-                }
-                if (pinyins[cur] == undefined) {
-                    if (curClass == "") {
-                        curClass = "pinyin-unknown";
-                    } else {
-                        curClass += " pinyin-unknown";
-                    }
-                }
-            }
-            if (curClass != prevClass) {
-                if (prevClass != "") {
-                    text += "</span>";
-                }
-                if (curClass != "") {
-                    text += '<span class="' + curClass + '">';
-                }
-            }
-            text += cur;
-            prevClass = curClass;
-        }
-        if (curClass != "") {
-            text += "</span>";
-        }
-        text += "</p>";
-        return text;
-    }
-
-    function init() {
-        loadZi();
-        loadData();
-        setMode(1);
-    }
-
-    init();
+    
 
 </script>
 
