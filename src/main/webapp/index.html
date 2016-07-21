@@ -74,6 +74,18 @@
             background: #00FFF9;
         }
 
+        .word4 {
+            border: 2px dotted #FF0000;
+            border-radius: 8px;
+            background: #ffc8f6;
+        }
+
+        .word2 {
+            border: 2px dashed #3d00ff;
+            border-radius: 8px;
+            background: #b5ffa9;
+        }
+
         /* lookup */
         .pinyin {
 
@@ -136,8 +148,18 @@
             <button id="pinyin_edit" onclick="onEditPinyinClick()">Edit</button>
             <button id="pinyin_save" onclick="ui.onSavePinyinClick()">Save</button>
         </div>
+        <div id="word_info" style="margin-top: 5px">
+            <button id="word_trivia" onclick="ui.wordTrivia()">T</button>
+            <button id="word_learn" onclick="ui.wordLearn()">L</button>
+            <span id="char_word_value"></span>
+            <label for="word_pinyin_input"></label><input id="word_pinyin_input" onkeyup="ui.updateReadWordPanel()">
+            <label for="word_input"></label><input id="word_input" onkeyup="ui.updateReadWordPanel()">
+            <button id="word_edit" onclick="onEditWordClick()">Edit</button>
+            <button id="word_save" onclick="ui.onSaveWordClick()">Save</button>
+        </div>
+
     </div>
-    <div id="lookup" style="max-height: 200px; overflow-y: scroll"></div>
+    <div id="lookup" style="max-height: 200px; overflow-y: scroll; margin-top: 30px"></div>
 
 </div>
 
@@ -190,6 +212,14 @@
             this.pinyinStageMap[cur.word] = getType(cur.diff, cur.stage);
             this.pinyinMap[cur.word] = cur;
         }
+        var words = resp.words;
+        this.wordStageMap = {};
+        this.wordMap = {};
+        for (let i = 0; i < words.length; i++) {
+            let cur = words[i];
+            this.wordStageMap[cur.word] = getType(cur.diff, cur.stage);
+            this.wordMap[cur.word] = cur;
+        }
 
     };
 
@@ -205,12 +235,20 @@
         return this.pinyinMap[word];
     };
 
+    DataHolder.prototype.getWord = function(word) {
+        return this.wordMap[word];
+    };
+
     DataHolder.prototype.getCharStage = function(word) {
         return this.charStageMap[word];
     };
 
     DataHolder.prototype.getPinyinStage = function(word) {
         return this.pinyinStageMap[word];
+    };
+
+    DataHolder.prototype.getWordStage = function(word) {
+        return this.wordStageMap[word];
     };
 
     DataHolder.prototype.setCharState = function(word, state) {
@@ -225,7 +263,7 @@
             this.charMap[word].diff = -1;
             this.charStageMap[word] = 4;
         }
-        this.restSend("rest/set_stage", {word: word, stage: state, chars: true});
+        this.restSend("rest/set_stage", {word: word, stage: state, type: 'c'});
     };
 
     DataHolder.prototype.insertChar = function(char) {
@@ -246,13 +284,43 @@
             this.pinyinMap[word].diff = -1;
             this.pinyinStageMap[word] = 4;
         }
-        this.restSend("rest/set_stage", {word: word, stage: state, chars: false});
+        this.restSend("rest/set_stage", {word: word, stage: state, type: 'p'});
     };
 
     DataHolder.prototype.insertPinyin = function(pinyin) {
         this.restSend("rest/upsert_pinyin", pinyin);
         this.pinyinMap[pinyin.word] = pinyin;
         this.pinyinStageMap[pinyin.word] = 3;
+    };
+
+    DataHolder.prototype.setWordState = function(word, state) {
+        if (!this.wordStageMap[word]) {
+            throw "Not found!"
+        }
+        if (state == 1) {
+            this.wordMap[word].stage = 1;
+            this.wordStageMap[word] = 1;
+        } else if (state == 2) {
+            this.wordMap[word].stage = 2;
+            this.wordMap[word].diff = -1;
+            this.wordStageMap[word] = 4;
+        }
+        this.restSend("rest/set_stage", {word: word, stage: state, type: 'w'});
+    };
+
+    DataHolder.prototype.insertWord = function(word) {
+        this.restSend("rest/upsert_word", word);
+        this.wordMap[word.word] = word;
+        this.wordStageMap[word.word] = 4;
+    };
+
+    DataHolder.prototype.hasWord = function(fragment) {
+        for (let i = 2; i < 5; i++) {
+            let r = this.wordStageMap[fragment.substring(0, i)];
+            if (r && r != 1) {
+                return {len: i, stage: r};
+            }
+        }
     };
 
     DataHolder.prototype.restSend = function(url, data, asGet) {
@@ -270,7 +338,7 @@
     holder.loadFromServer();
 
 
-    var selection = {text: "", charEdit: false, pinyinEdit: false};
+    var selection = {text: "", charEdit: false, pinyinEdit: false, wordEdit: false};
 
     /*
     UI ENGINE
@@ -344,6 +412,7 @@
             this.hide("text_div");
             this.hide("char_info");
             this.hide("pinyin_info");
+            this.hide("word_info");
         } else {
             this.show("insert_new");
             this.hide("text_insert");
@@ -352,6 +421,7 @@
             this.show("text_div");
             this.show("char_info");
             this.show("pinyin_info");
+            this.show("word_info");
         }
     };
 
@@ -408,6 +478,35 @@
             this.hide("pinyin_edit");
             this.hide("pinyin_save");
         }
+        if (sel.length > 1 && sel.length < 5) {
+            let word = holder.getWord(sel);
+            if (word == null) {
+                this.hide("char_word_value");
+                this.show("word_input");
+                this.show("word_pinyin_input");
+                this.hide("word_edit");
+                let inputText = this.getText("word_input");
+                let pinyinText = this.getText("word_pinyin_input");
+                if (inputText.length > 0 && pinyinText.length > 0) {
+                    this.show("word_save");
+                } else {
+                    this.hide("word_save");
+                }
+            } else {
+                this.show("char_word_value");
+                this.setText("char_word_value", word.meaning);
+                this.hide("word_input");
+                this.hide("word_pinyin_input");
+                this.show("word_edit");
+                this.hide("word_save");
+            }
+        } else {
+            this.hide("char_word_value");
+            this.hide("word_input");
+            this.hide("word_pinyin_input");
+            this.hide("word_edit");
+            this.hide("word_save");
+        }
     };
 
     UI.prototype.textUpdate = function() {
@@ -423,6 +522,7 @@
         let text = "<p style='text-indent: 20px'>";
         let prevClass = "";
         let fragLen = 0;
+        let fragClass = "";
         for (var i = 0; i < line.length; i++) {
             var cur = line[i];
             var curClass = "";
@@ -443,19 +543,24 @@
                 }
 
                 if (fragLen == 0) {
-                    if (this.fragments[cur]) {
+                    let word = holder.hasWord(line.substring(i, i + 5));
+                    if (word) {
+                        fragLen = word.len;
+                        fragClass = "word" + word.stage;
+                    } else if (this.fragments[cur]) {
                         let frag = this.fragments[cur];
                         for (let j = 0; j < frag.length; j++) {
                             let item = frag[j];
                             if (item == line.substring(i, i + item.length)) {
                                 fragLen = item.length;
+                                fragClass = "fragment";
                                 break;
                             }
                         }
                     }
                 }
                 if (fragLen > 0) {
-                    curClass = "fragment";
+                    curClass = fragClass;
                     fragLen--;
                 }
             }
@@ -550,6 +655,14 @@
         }
     };
 
+    UI.prototype.wordTrivia = function() {
+        let sel = selection.text;
+        if (sel.length > 1 && holder.getWordStage(sel) != null) {
+            holder.setWordState(sel, 1);
+            this.textUpdate();
+        }
+    };
+
     UI.prototype.onSaveCharClick = function () {
         var sel = selection.text;
         var char = this.getValue("char_input");
@@ -577,6 +690,14 @@
         }
     };
 
+    UI.prototype.wordLearn = function() {
+        let sel = selection.text;
+        if (sel.length > 1 && holder.getWordStage(sel) != null) {
+            holder.setWordState(sel, 2);
+            this.textUpdate();
+        }
+    };
+
     UI.prototype.onSavePinyinClick = function () {
         var char = selection.text;
         var pinyin = this.getValue("pinyin_input");
@@ -592,6 +713,26 @@
             return;
         }
         selection.pinyinEdit = false;
+        this.updateReadWordPanel();
+        this.textUpdate();
+    };
+
+    UI.prototype.onSaveWordClick = function () {
+        var word = selection.text;
+        var meaning = this.getValue("word_input");
+        var pinyin = this.getValue("word_pinyin_input");
+        var p = {word: word, meaning: meaning, pinyin: pinyin};
+        if (word.length > 1 && pinyin.length > 0 && meaning.length > 0) {
+            try {
+                holder.insertWord(p);
+            } catch (err) {
+                alert("Cannot update word");
+                return;
+            }
+        } else {
+            return;
+        }
+        selection.wordEdit = false;
         this.updateReadWordPanel();
         this.textUpdate();
     };
@@ -711,6 +852,8 @@
         selection.text = window.getSelection().toString();
         ui.setValue("char_input", "");
         ui.setValue("pinyin_input", "");
+        ui.setValue("word_input", "");
+        ui.setValue("word_pinyin_input", "");
         ui.updateReadWordPanel();
         ui.lookup();
     }
@@ -722,7 +865,7 @@
     function ordered() {
         let text = "";
         var zi_dict = JSON.parse(window.localStorage["zi_dict"]);
-        for (var i = 0; i < 6000; i++) {
+        for (var i = 0; i < zi_dict.length; i++) {
             text += zi_dict[i].z;
         }
         ui.setNewText(text);

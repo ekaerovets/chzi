@@ -9,15 +9,21 @@ import java.util.List;
 public class MobileSyncData {
 
     private List<Char> chars;
+    private List<Word> words;
     private List<Pinyin> pinyins;
 
-    public MobileSyncData(List<Char> chars, List<Pinyin> pinyins) {
+    public MobileSyncData(List<Char> chars, List<Word> words, List<Pinyin> pinyins) {
         this.chars = chars;
+        this.words = words;
         this.pinyins = pinyins;
     }
 
     public List<Char> getChars() {
         return chars;
+    }
+
+    public List<Word> getWords() {
+        return words;
     }
 
     public List<Pinyin> getPinyins() {

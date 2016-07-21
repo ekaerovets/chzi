@@ -24,6 +24,7 @@ public class DSLHolder {
 
     public DSLHolder() {
 
+//        entries = new HashMap<>();
         try {
             entries = readDSL(DSLFile);
             System.out.println(entries.size());

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import ru.ekaerovets.model.Char;
 import ru.ekaerovets.model.MobileSyncData;
 import ru.ekaerovets.model.Pinyin;
+import ru.ekaerovets.model.Word;
 import ru.ekaerovets.service.DSLHolder;
 import ru.ekaerovets.service.PinyinParser;
 import ru.ekaerovets.service.ZiService;
@@ -62,13 +63,6 @@ public class MainController {
         resp.getWriter().close();
     }
 
-    @RequestMapping(method = RequestMethod.POST, value = "/upsert_pinyin")
-    public ResponseEntity<Void> upsertPinyin(@RequestBody String input) {
-        Pinyin pinyin = gson.fromJson(input, Pinyin.class);
-        ziService.upsertPinyin(pinyin);
-        return ResponseEntity.ok().build();
-    }
-
     @RequestMapping(method = RequestMethod.POST, value = "/upsert_char")
     public ResponseEntity<Void> upsertChar(@RequestBody String input) {
         Char ch = gson.fromJson(input, Char.class);
@@ -76,11 +70,25 @@ public class MainController {
         return ResponseEntity.ok().build();
     }
 
+    @RequestMapping(method = RequestMethod.POST, value = "/upsert_word")
+    public ResponseEntity<Void> upsertWord(@RequestBody String input) {
+        Word w = gson.fromJson(input, Word.class);
+        ziService.upsertWord(w);
+        return ResponseEntity.ok().build();
+    }
+
+    @RequestMapping(method = RequestMethod.POST, value = "/upsert_pinyin")
+    public ResponseEntity<Void> upsertPinyin(@RequestBody String input) {
+        Pinyin pinyin = gson.fromJson(input, Pinyin.class);
+        ziService.upsertPinyin(pinyin);
+        return ResponseEntity.ok().build();
+    }
+
     @RequestMapping(method = RequestMethod.POST, value = "/set_stage")
     public ResponseEntity<Void> setStage(@RequestBody String input) {
         Map<String, String> params = gson.fromJson(input, new TypeToken<Map<String, String>>() {
         }.getType());
-        ziService.setStage(params.get("word"), Integer.parseInt(params.get("stage")), "true".equals(params.get("chars")));
+        ziService.setStage(params.get("word"), Integer.parseInt(params.get("stage")), params.get("type"));
         return ResponseEntity.ok().build();
     }
 

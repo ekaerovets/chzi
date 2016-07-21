@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import ru.ekaerovets.model.Char;
 import ru.ekaerovets.model.Pinyin;
+import ru.ekaerovets.model.Word;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
@@ -44,6 +45,20 @@ public class Dao {
         return c;
     };
 
+    private RowMapper<Word> WORD_ROW_MAPPER = (rs, i) ->
+    {
+        Word w = new Word();
+        w.setWord(rs.getString("word"));
+        w.setMeaning(rs.getString("meaning"));
+        w.setPinyin(rs.getString("pinyin"));
+        w.setStage(rs.getInt("stage"));
+        w.setDiff(rs.getDouble("diff"));
+        w.setOverride(rs.getBoolean("override"));
+        w.setMark(rs.getBoolean("mark"));
+        w.setExample(rs.getString("example"));
+        return w;
+    };
+
     private RowMapper<Pinyin> PINYIN_ROW_MAPPER = (rs, i) ->
     {
         Pinyin p = new Pinyin();
@@ -59,6 +74,10 @@ public class Dao {
 
     public List<Char> loadChars() {
         return jt.query("select * from chars", CHAR_ROW_MAPPER);
+    }
+
+    public List<Word> loadWords() {
+        return jt.query("select * from words", WORD_ROW_MAPPER);
     }
 
     public List<Pinyin> loadPinyins() {
@@ -78,6 +97,23 @@ public class Dao {
             @Override
             public int getBatchSize() {
                 return chars.size();
+            }
+        });
+    }
+
+    public void updateWordsOnSync(List<Word> words) {
+        String sql = "update words set stage = ?, diff = ?, override = false where word = ?";
+        jt.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setInt(1, words.get(i).getStage());
+                ps.setDouble(2, words.get(i).getDiff());
+                ps.setString(3, words.get(i).getWord());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return words.size();
             }
         });
     }
@@ -105,11 +141,40 @@ public class Dao {
         return count > 0;
     }
 
+    public boolean wordExists(Word w) {
+        String sql = "select count(*) from words where word = ?";
+        Integer count = jt.queryForObject(sql, new Object[] {w.getWord()}, Integer.class);
+        return count > 0;
+    }
+
+    public boolean pinyinExists(Pinyin p) {
+        String sql = "select count(*) from pinyins where word = ?";
+        Integer count = jt.queryForObject(sql, new Object[] {p.getWord()}, Integer.class);
+        return count > 0;
+    }
+
     public void insertChar(Char c) {
         String sql = "insert into chars(word, meaning, stage, diff, override, mark, example) values (?, ?, 3, -1, false, false, null)";
         jt.update(sql, ps -> {
             ps.setString(1, c.getWord());
             ps.setString(2, c.getMeaning());
+        });
+    }
+
+    public void insertWord(Word w) {
+        String sql = "insert into words(word, meaning, pinyin, stage, diff, override, mark, example) values (?, ?, ?, 2, -1, false, false, null)";
+        jt.update(sql, ps -> {
+            ps.setString(1, w.getWord());
+            ps.setString(2, w.getMeaning());
+            ps.setString(3, w.getPinyin());
+        });
+    }
+
+    public void insertPinyin(Pinyin p) {
+        String sql = "insert into pinyins(word, pinyin, stage, diff, override, mark, example) values (?, ?, 3, -1, false, false, null)";
+        jt.update(sql, ps -> {
+            ps.setString(1, p.getWord());
+            ps.setString(2, p.getPinyin());
         });
     }
 
@@ -123,17 +188,14 @@ public class Dao {
         });
     }
 
-    public boolean pinyinExists(Pinyin p) {
-        String sql = "select count(*) from pinyins where word = ?";
-        Integer count = jt.queryForObject(sql, new Object[] {p.getWord()}, Integer.class);
-        return count > 0;
-    }
-
-    public void insertPinyin(Pinyin p) {
-        String sql = "insert into pinyins(word, pinyin, stage, diff, override, mark, example) values (?, ?, 3, -1, false, false, null)";
+    public void updateWord(Word w) {
+        String sql = "update words set meaning = ?, pinyin = ?, mark = ?, example = ? where word = ?";
         jt.update(sql, ps -> {
-            ps.setString(1, p.getWord());
-            ps.setString(2, p.getPinyin());
+            ps.setString(1, w.getMeaning());
+            ps.setString(2, w.getPinyin());
+            ps.setBoolean(3, w.isMark());
+            ps.setString(4, w.getExample());
+            ps.setString(5, w.getWord());
         });
     }
 
@@ -147,8 +209,16 @@ public class Dao {
         });
     }
 
-    public void setPinyinStage(String word, int stage) {
-        String sql = "update pinyins set stage = ?, override = true, diff = -1 where word = ?";
+    public void setCharStage(String word, int stage) {
+        String sql = "update chars set stage = ?, override = true, diff = -1 where word = ?";
+        jt.update(sql, ps -> {
+            ps.setInt(1, stage);
+            ps.setString(2, word);
+        });
+    }
+
+    public void setWordStage(String word, int stage) {
+        String sql = "update words set stage = ?, override = true, diff = -1 where word = ?";
         jt.update(sql, ps -> {
             ps.setInt(1, stage);
             ps.setString(2, word);
@@ -156,8 +226,8 @@ public class Dao {
     }
 
 
-    public void setCharStage(String word, int stage) {
-        String sql = "update chars set stage = ?, override = true, diff = -1 where word = ?";
+    public void setPinyinStage(String word, int stage) {
+        String sql = "update pinyins set stage = ?, override = true, diff = -1 where word = ?";
         jt.update(sql, ps -> {
             ps.setInt(1, stage);
             ps.setString(2, word);
