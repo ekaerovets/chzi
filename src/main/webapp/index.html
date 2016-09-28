@@ -48,8 +48,7 @@
         }
 
         .pinyin2, .pinyin3, .pinyin4, .pinyin5 {
-            border: 1px solid gray;
-            border-radius: 3px;
+            border-radius: 4px;
         }
 
         .pinyin2 {
@@ -57,11 +56,11 @@
         }
 
         .pinyin3 {
-            background: #e7e7ff;
+            background: #d0d0ff;
         }
 
         .pinyin4 {
-            background: #ffff98;
+            background: #ffff64;
         }
 
         .pinyin5 {
@@ -74,16 +73,16 @@
             background: #00FFF9;
         }
 
-        .word4 {
-            border: 2px dotted #FF0000;
-            border-radius: 8px;
-            background: #ffc8f6;
+        .word2 {
+            border: 2px dotted blue;
+            border-radius: 6px;
+            box-shadow: inset 0 0 5px 0 blue;
         }
 
-        .word2 {
-            border: 2px dashed #3d00ff;
-            border-radius: 8px;
-            background: #b5ffa9;
+        .word4 {
+            border: 2px dotted #fd00ff;
+            border-radius: 6px;
+            box-shadow: inset 0 0 5px 0 #fd00ff;
         }
 
         /* lookup */
@@ -518,14 +517,12 @@
         this.setHtml("text_div", text);
     };
 
+    /* 的命运。  - bug */
+
     UI.prototype.processTextLine = function(line) {
-        let text = "<p style='text-indent: 20px'>";
-        let prevClass = "";
-        let fragLen = 0;
-        let fragClass = "";
-        for (var i = 0; i < line.length; i++) {
-            var cur = line[i];
-            var curClass = "";
+
+        function getInnerClass(cur) {
+            let curClass = "";
             if (holder.getIndex(cur)) {
                 let stage = holder.getCharStage(cur);
                 if (!stage) {
@@ -541,41 +538,80 @@
                 if (stage > 1) {
                     curClass += ' pinyin' + stage;
                 }
+            }
+            return curClass;
+        }
 
-                if (fragLen == 0) {
-                    let word = holder.hasWord(line.substring(i, i + 5));
-                    if (word) {
-                        fragLen = word.len;
-                        fragClass = "word" + word.stage;
-                    } else if (this.fragments[cur]) {
-                        let frag = this.fragments[cur];
-                        for (let j = 0; j < frag.length; j++) {
-                            let item = frag[j];
-                            if (item == line.substring(i, i + item.length)) {
-                                fragLen = item.length;
-                                fragClass = "fragment";
-                                break;
-                            }
+        let text = "<p style='text-indent: 20px'>";
+        let fragLen = 0;
+        let forceBreak = false;
+        let innerClass = "";
+        let outerClass = "";
+        let prevInnerClass = "";
+        let prevOuterClass = "";
+        for (let i = 0; i < line.length; i++) {
+            let cur = line[i];
+            forceBreak = false;
+            innerClass = getInnerClass(cur);
+            if (fragLen > 1) {
+                outerClass = prevOuterClass;
+                if (outerClass == "fragment") {
+                    innerClass = "";
+                }
+                fragLen--;
+            } else if (fragLen <= 1) {
+                if (fragLen == 1) {
+                    fragLen--;
+                }
+                outerClass = "";
+                let word = holder.hasWord(line.substring(i, i + 5));
+                if (word) {
+                    fragLen = word.len;
+                    outerClass = 'word' + word.stage;
+                    forceBreak = true;
+                } else if (this.fragments[cur]) {
+                    let frag = this.fragments[cur];
+                    for (let j = 0; j < frag.length; j++) {
+                        let item = frag[j];
+                        if (item == line.substring(i, i + item.length)) {
+                            fragLen = item.length;
+                            outerClass = "fragment";
+                            innerClass = "";
+                            forceBreak = true;
+                            break;
                         }
                     }
                 }
-                if (fragLen > 0) {
-                    curClass = fragClass;
-                    fragLen--;
+            }
+            if (prevOuterClass != outerClass || forceBreak) {
+                if (prevInnerClass) {
+                    text += "</span>";
+                    prevInnerClass = "";
+                }
+                if (prevOuterClass) {
+                    text += "</span>";
+                    prevOuterClass = "";
                 }
             }
-            if (curClass != prevClass) {
-                if (prevClass != "") {
+            if (outerClass != prevOuterClass) {
+                text += '<span class="' + outerClass + '">';
+            }
+            if (innerClass != prevInnerClass) {
+                if (prevInnerClass) {
                     text += "</span>";
                 }
-                if (curClass != "") {
-                    text += '<span class="' + curClass + '">';
+                if (innerClass) {
+                    text += '<span class="' + innerClass + '">';
                 }
             }
             text += cur;
-            prevClass = curClass;
+            prevOuterClass = outerClass;
+            prevInnerClass = innerClass;
         }
-        if (curClass != "") {
+        if (prevInnerClass) {
+            text += "</span>";
+        }
+        if (prevOuterClass) {
             text += "</span>";
         }
         text += "</p>";

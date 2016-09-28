@@ -13,6 +13,7 @@ public class Char {
     private boolean override;
     private boolean mark;
     private String example;
+    private String radix;
 
     public Char() {
 
@@ -74,4 +75,11 @@ public class Char {
         this.example = example;
     }
 
+    public String getRadix() {
+        return radix;
+    }
+
+    public void setRadix(String radix) {
+        this.radix = radix;
+    }
 }

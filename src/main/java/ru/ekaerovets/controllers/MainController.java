@@ -6,10 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 import ru.ekaerovets.model.Char;
 import ru.ekaerovets.model.MobileSyncData;
 import ru.ekaerovets.model.Pinyin;
@@ -39,6 +36,11 @@ public class MainController {
     private DSLHolder dslHolder;
 
     private Gson gson = new GsonBuilder().create();
+
+    @ModelAttribute
+    public void allowCrossOrigin(HttpServletResponse response) {
+        response.setHeader("Access-Control-Allow-Origin", "*");
+    }
 
     /**
      * Sync data with mobile application

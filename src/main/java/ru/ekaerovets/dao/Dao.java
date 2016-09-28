@@ -42,6 +42,7 @@ public class Dao {
         c.setOverride(rs.getBoolean("override"));
         c.setMark(rs.getBoolean("mark"));
         c.setExample(rs.getString("example"));
+        c.setRadix(rs.getString("radix"));
         return c;
     };
 

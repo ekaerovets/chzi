@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0-rc.1/themes/smoothness/jquery-ui.css">
+
+    <script   src="https://code.jquery.com/jquery-1.12.4.min.js"   integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="   crossorigin="anonymous"></script>
+    <script   src="https://code.jquery.com/ui/1.12.0-rc.1/jquery-ui.min.js"   integrity="sha256-mFypf4R+nyQVTrc8dBd0DKddGB5AedThU73sLmLWdc0="   crossorigin="anonymous"></script>
+</head>
+
+<body>
+
+<script>
+
+    var data;
+    var lookup = {};
+
+    // key - character or radical
+    // alias
+    // is_char
+    // radicals
+
+    function load() {
+        var item = window.localStorage.getItem("radix_data");
+        if (item) {
+            data = JSON.parse(item);
+        } else {
+            data = {};
+        }
+    }
+
+    function store() {
+        window.localStorage.setItem("radix_data", JSON.stringify(data));
+    }
+
+    $(function() {
+        load();
+        $("#btnSave").click(function() {
+            var item = {};
+            item.alias = $("#alias").val();
+            item.radicals = $("#radicals").html();
+            item.isChar = $("#isChar").prop("checked");
+            item.key = $("#char").val();
+            data[item.key] = item;
+            store();
+        });
+
+        $("#char").change(function() {
+            var newVal = $("#char").val();
+            var item = data[newVal];
+            if (item) {
+                $("#alias").val(item.alias);
+                $("#radicals").html(item.radicals);
+                $("#isChar").prop("checked", item.is_char);
+            } else {
+                $("#alias").val("");
+                $("#radicals").html("");
+                $("#isChar").prop("checked", false);
+            }
+            var lup = lookup[newVal];
+            if (!lup) {
+                lup = "";
+            }
+            $("#lookupData").html(lup);
+        });
+
+        var addR = function (val) {
+            var rr = $("#radicals");
+            var oldVal = rr.html();
+            if (oldVal) {
+                oldVal += ", ";
+            }
+            var newrR = $("#newRadical");
+            oldVal += val ? val : newrR.val();
+            rr.html(oldVal);
+            newrR.val("");
+        };
+        $("#addRadical").click(addR);
+
+        $("#newRadical").autocomplete({
+            source: function(request, response) {
+                var res = [];
+                for (var key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        var item = data[key];
+                        if (item.alias && item.alias.startsWith(request.term)) {
+                            res.push(item.alias);
+                        }
+                    }
+                }
+                response(res);
+            },
+            select: function(event, ui) {
+                var value = ui.item.value;
+                addR(value);
+                return false;
+            }
+        });
+
+//        $("#convert").click(function() {
+//            var src = $("#forCopy").val();
+//            var lines = src.split("\n");
+//            var res = "";
+//            for (var i = 0; i < lines.length; i++) {
+//                var line = lines[i];
+//                var indexOf = line.indexOf("\t");
+//                res += line.substr(indexOf + 1, 1);
+//            }
+//            $("#forCopy").val(res);
+//        })
+
+        $("#readCJK").click(function() {
+            var src = $("#forCopy").val();
+            var lines = src.split("\n");
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                var parts = line.split(":");
+                lookup[parts[0]] = parts[1];
+            }
+            $("#forCopy").val("");
+        });
+
+        $("#filter").click(function() {
+            var src = $("#forCopy").val();
+            var res = "";
+            var keys = {};
+            for (var key in data) {
+                if (data.hasOwnProperty(key)) {
+                    keys[data[key].key] = true;
+                }
+            }
+            for (var i = 0; i < src.length; i++) {
+                var c = src[i];
+                if (!keys[c]) {
+                    res += c;
+                }
+            }
+            $("#forCopy").val(res);
+        });
+
+        $("#showDupl").click(function() {
+            var dd = {};
+            var res = "";
+            for (var key in data) {
+                if (data.hasOwnProperty(key)) {
+                    var item = data[key].alias;
+                    if (item) {
+                        if (dd[item]) {
+                            res += dd[item];
+                            res += key;
+                        } else {
+                            dd[item] = key;
+                        }
+                    }
+
+                }
+            }
+            $("#forCopy").val(res);
+        });
+
+        $("#display").click(function() {
+            var res = "";
+            var map = {};
+            for (var key in data) {
+                if (data.hasOwnProperty(key)) {
+                    var item = data[key];
+                    map[item.alias] = "(" + item.key + ") " + item.alias;
+                }
+            }
+            for (key in data) {
+                if (data.hasOwnProperty(key)) {
+                    item = data[key];
+                    if (item.radicals) {
+                        let line = item.key + " = ";
+                        var rx = item.radicals.split(",");
+                        for (let i = 0; i < rx.length; i++) {
+                            if (i > 0) {
+                                line += " + ";
+                            }
+                            line += map[rx[i].trim()];
+                        }
+                        line += "\n";
+                        res += line;
+                    }
+                }
+            }
+            $("#forCopy").val(res);
+        });
+
+        $("#aliases").click(function() {
+            var res = "";
+            for (var key in data) {
+                if (data.hasOwnProperty(key)) {
+                    var item = data[key];
+                    if (item.alias) {
+                        res += item.key + " = " + item.alias + "\n";
+                    }
+                }
+            }
+            $("#forCopy").val(res);
+        });
+
+        $("#autogen").click(function() {
+            generateAuto();
+        });
+
+        $("#sql").click(function() {
+            var res = "";
+            var map = {};
+            for (var key in data) {
+                if (data.hasOwnProperty(key)) {
+                    var item = data[key];
+                    map[item.alias] = "(" + item.key + ") " + item.alias;
+                }
+            }
+            outer:
+                    for (key in data) {
+                        if (data.hasOwnProperty(key)) {
+                            item = data[key];
+                            if (item.radicals) {
+                                let line = "";
+                                var rx = item.radicals.split(",");
+                                for (let i = 0; i < rx.length; i++) {
+                                    if (i > 0) {
+                                        line += " + ";
+                                    }
+                                    var mm = map[rx[i].trim()];
+                                    if (!mm) {
+                                        continue outer;
+                                    }
+                                    line += mm;
+                                }
+                                line += "";
+                                res += "update chars set radix = '" + line + "' where word = '" + key + "';\n"
+                            }
+                        }
+                    }
+            $("#forCopy").val(res);
+        })
+
+    });
+
+
+    function getAutoHtml(value, map) {
+        var item = lookup[value];
+        if (!item) {
+            return "";
+        }
+        var o = item.indexOf("(");
+        var c = item.indexOf(")");
+        if (o == -1 || c == -1) {
+            return "";
+        }
+        var sub = item.substr(o + 1, c - o - 1);
+        var els = sub.split(",");
+        var res = "<span>" + value + " = ";
+        for (var i = 0; i < els.length; i++) {
+            var sys = data[els[i]];
+            if (!sys) {
+                return "";
+            }
+            if (!sys.alias) {
+                if (!sys.radicals) {
+                    return "";
+                }
+                var rr = sys.radicals.split(",");
+                for (var j = 0; j < rr.length; j++) {
+                    var ii = map[rr[j].trim()];
+                    if (!ii) {
+                        return "";
+                    }
+                    if (i > 0 || j > 0) {
+                        res += " + ";
+                    }
+                    res += ii.key;
+                }
+            } else {
+                if (i > 0) {
+                    res += " + ";
+                }
+                res += sys.key;
+            }
+        }
+        res += "</span><button onclick=\"addAuto('" + value + "')\">Add</button></br>";
+        return res;
+    }
+
+    function generateAuto() {
+        var res = "";
+        var src = $("#forCopy").val();
+
+        var map = {};
+        for (var key in data) {
+            if (data.hasOwnProperty(key)) {
+                var item = data[key];
+                map[item.alias] = item;
+            }
+        }
+
+        for (var i = 0; i < src.length; i++) {
+            res += getAutoHtml(src[i], map);
+        }
+        $("#autog").html(res);
+    }
+
+    function addAuto(value) {
+        var item = lookup[value];
+        if (!item) {
+            return;
+        }
+        var o = item.indexOf("(");
+        var c = item.indexOf(")");
+        if (o == -1 || c == -1) {
+            return;
+        }
+        var sub = item.substr(o + 1, c - o - 1);
+        var els = sub.split(",");
+        var res = "";
+        for (var i = 0; i < els.length; i++) {
+            var sys = data[els[i]];
+            if (!sys) {
+                return;
+            }
+            if (sys.alias) {
+                if (i > 0) {
+                    res += ", ";
+                }
+                res += sys.alias;
+            } else {
+                if (sys.radicals) {
+                    var rr = sys.radicals.split(",");
+                    for (var j = 0; j < rr.length; j++) {
+                        var map = {};
+                        for (var key in data) {
+                            if (data.hasOwnProperty(key)) {
+                                var iii = data[key];
+                                map[iii.alias] = iii;
+                            }
+                        }
+                        var ii = map[rr[j].trim()];
+                        if (!ii) {
+                            return ;
+                        }
+                        if (i > 0 || j > 0) {
+                            res += ", ";
+                        }
+                        res += ii.alias;
+                    }
+                } else {
+                    return;
+                }
+            }
+
+        }
+        // console.log(res + " = " + value);
+        data[value] = {alias: null, radicals: res, isChar: true, key: value};
+        store();
+    }
+
+
+</script>
+
+
+<div style="width: 450px; height: 350px; border: 1px solid black">
+    <textarea style="width: 385px; font-size: 25px" id="forCopy">for copying</textarea><br>
+    <label>Character
+        <input id="char" style="font-size: 25px">
+    </label><br>
+    <span id="lookupData" style="border: 1px solid gray; background: #fff0af"></span><br>
+    <label>Alias
+        <input id="alias">
+    </label><br>
+    <label for="isChar">Is char</label><input type="checkbox" id="isChar"/><br>
+    <span id="radicals" style="border: 1px solid gray; background: #ddd"></span><br>
+    <label>Add new
+        <input id="newRadical">
+    </label><input id="addRadical" type="button" value="Add"/><br><br>
+    <input type="button" id="btnSave" value="Save"/>
+
+    <!--<input type="button" id="convert" value="Convert"/>-->
+    <input type="button" id="readCJK" value="readCJK"/>
+    <input type="button" id="filter" value="Filter" />
+    <input type="button" id="showDupl" value="Duplicates" />
+    <input type="button" id="display" value="Display"/>
+    <input type="button" id="aliases" value="Aliases"/>
+    <input type="button" id="sql" value="SQL"/>
+    <input type="button" id="autogen" value="Autogen"/><br>
+    <div id="autog" style="width: 400px; height: 200px; overflow: scroll">
+        <span>a + b = c</span><button onclick="addAuto('汉')">Add</button>
+    </div>
+</div>
+
+</body>
+
+</html>
