@@ -1,6 +1,9 @@
 .idea
 out
 target
+classes
+chinese.iml
 chinese_zi.iml
-/dabkrs_v70_1
+/dabkrs
 /bak
+/src/main/resources/application.properties
