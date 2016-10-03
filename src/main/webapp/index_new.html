@@ -345,7 +345,7 @@
             z-index: 100;
         }
 
-        #ovNewText {
+        .popup-center {
             position: fixed;
             z-index: 200;
             left: 50%;
@@ -480,10 +480,24 @@
         .words-table {
             font-size: 14px;
             border-collapse: collapse;
+            width: 100%;
         }
 
         .words-table td {
             border: 1px solid gray;
+        }
+
+        #ovCloseContainingWords {
+            margin: 3px;
+            border: 1px solid gray;
+            padding: 0 4px 1px 4px;
+            border-radius: 3px;
+            background: #ffb1b1;
+            cursor: default;
+        }
+
+        #ovCloseContainingWords:hover {
+            background: #ff9ca1;
         }
 
     </style>
@@ -520,6 +534,9 @@
             this.ovStageTrivia = document.getElementById("ovStageTrivia");
             this.ovStageLearn = document.getElementById("ovStageLearn");
             this.ovStageNew = document.getElementById("ovStageNew");
+            this.ovContainingWords = document.getElementById("ovContainingWords");
+            this.containingWordsList = document.getElementById("containingWordsList");
+            this.ovCloseContainingWords = document.getElementById("ovCloseContainingWords");
 
             // top panel
             this.tpNew = document.getElementById("tpNew");
@@ -529,6 +546,7 @@
             this.tpColorMeaning = document.getElementById("chbColorMeaning");
             this.tpColorPinyin = document.getElementById("chbColorPinyin");
             this.tpColorWords = document.getElementById("chbColorWords");
+            this.tpAutoDict = document.getElementById("chbAutoDict");
 
             // character panel
             this.cpPanel = document.getElementById("cpPanel");
@@ -570,7 +588,7 @@
             this.pinyinEdit = false;
             this.wordEdit = false;
             this.stageChangeKey = ""; // p, c, w
-            this.options = {c: true, p: true, w: true};
+            this.options = {c: true, p: true, w: true, d: false};
             this.ankiWordsCount = 0;
 
             // true = show, false = hide
@@ -583,6 +601,9 @@
             };
 
             this.formatDiff = function(diff) {
+                if (diff < 0) {
+                    return "N";
+                }
                 let val = 10 / diff;
                 if (val > 12000) {
                     return (val / 1000).toFixed(0) + "k";
@@ -652,6 +673,9 @@
                 } else {
                     that.cpPinInput.value = "";
                 }
+                let cnt = that.dataHolder.countContainingWords(char);
+                that.cpWords.value = cnt == 0 ? "Words" : "Words (" + cnt + ")";
+                that.cpWords.disabled = cnt == 0;
             };
 
             this.setupWord = function(word) {
@@ -754,7 +778,7 @@
                 let selection = window.getSelection();
                 let txt = selection.toString();
                 that.onTextSelected(txt);
-                if (txt) {
+                if (txt && that.options.d) {
                     let res = dataHolder.lookup(txt);
                     let clipRect = selection.getRangeAt(0).getBoundingClientRect();
                     if (res) {
@@ -950,6 +974,19 @@
                 }
             };
 
+            this.cpWordsClick = function() {
+                let words = that.dataHolder.getContainingWords(that.selection);
+                let html = "<table class='words-table'><tbody>";
+                for (let i = 0; i < words.length; i++) {
+                    html += "<tr><td>" + words[i].word + "</td><td>" + words[i].pinyin + "</td><td>" +
+                            words[i].meaning + "</td><td>" + that.formatDiff(words[i].diff) + "</td></tr>";
+                }
+                html += "</tbody></table>";
+                that.showhide(that.ovOverlay, true);
+                that.showhide(that.ovContainingWords, true);
+                that.containingWordsList.innerHTML = html;
+            };
+
             this.changeStage = function(newStage) {
                 if (that.stageChangeKey == "c") {
                     that.dataHolder.setCharStage(that.selection, newStage);
@@ -979,7 +1016,13 @@
                 that.options.c = that.tpColorMeaning.checked;
                 that.options.p = that.tpColorPinyin.checked;
                 that.options.w = that.tpColorWords.checked;
+                that.options.d = that.tpAutoDict.checked;
                 that.invalidate();
+            };
+
+            this.closeContainingWordsClick = function() {
+                that.showhide(that.ovOverlay, false);
+                that.showhide(that.ovContainingWords, false);
             };
 
             this.bindEvents = function() {
@@ -998,12 +1041,15 @@
                 that.ovStage.onblur = that.ovStageBlur;
                 that.cpMeanStage.onmouseup = that.cpMeanStageMouseUp;
                 that.cpPinStage.onmouseup = that.cpPinStageMouseUp;
+                that.cpWords.onmouseup = that.cpWordsClick;
                 that.ovStageTrivia.onmousedown = that.setTrivia;
                 that.ovStageLearn.onmousedown = that.setLearn;
                 that.ovStageNew.onmousedown = that.setNew;
                 that.tpColorMeaning.onclick = that.updateOptions;
                 that.tpColorPinyin.onclick = that.updateOptions;
                 that.tpColorWords.onclick = that.updateOptions;
+                that.tpAutoDict.onclick = that.updateOptions;
+                that.ovCloseContainingWords.onclick = that.closeContainingWordsClick;
             };
 
             this.uiInit = function() {
@@ -1278,6 +1324,26 @@
                 }
                 that.server.ajax("words_anki", "POST", words);
                 return output;
+            };
+
+            this.countContainingWords = function(char) {
+                let res = 0;
+                for (let word in that.words) {
+                    if (that.words.hasOwnProperty(word) && word.indexOf(char) != -1) {
+                        res++;
+                    }
+                }
+                return res;
+            };
+
+            this.getContainingWords = function(char) {
+                let res = [];
+                for (let word in that.words) {
+                    if (that.words.hasOwnProperty(word) && word.indexOf(char) != -1) {
+                        res.push(that.words[word]);
+                    }
+                }
+                return res;
             }
 
         }
@@ -1406,9 +1472,15 @@
 </head>
 <body>
 <div id="ovOverlay" class="overlay hidden"></div>
-<div id="ovNewText" class="hidden">
+<div id="ovNewText" class="popup-center hidden">
     <textarea id="newText"></textarea>
     <input type="button" id="btnNewText" value="Go">
+</div>
+<div id="ovContainingWords" class=" popup-center hidden">
+    <div style="background: #eee;height:394px;padding: 2px;border: 1px solid black;border-radius: 4px;">
+        <span id="ovCloseContainingWords" class="right">x</span>
+        <div id="containingWordsList"></div>
+    </div>
 </div>
 <div id="ovDict" tabindex="0" class="dict-overlay hidden"></div>
 <div id="ovStage" tabindex="1" class="stage-choose hidden">
@@ -1451,7 +1523,7 @@
         </div>
         <div class="char-right">
             <div class="row">
-                <input id="cpWords" class="words-button" type="button" value="Words (10)">
+                <input id="cpWords" class="words-button" type="button" value="Words">
             </div>
             <div class="row option">
                 <input id="cpMarked" type="checkbox">
