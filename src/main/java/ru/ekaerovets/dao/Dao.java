@@ -235,4 +235,19 @@ public class Dao {
         });
     }
 
+    public void wordsAnki(List<String> words) {
+        String sql = "update words set stage = 1, override = true, diff = -1 where word in (";
+        for (int i = 0; i < words.size(); i++) {
+            if (i > 0) {
+                sql += ",";
+            }
+            sql += "?";
+        }
+        sql += ")";
+        jt.update(sql, ps -> {
+            for (int i = 0; i < words.size(); i++) {
+                ps.setString(i + 1, words.get(i));
+            }
+        });
+    }
 }

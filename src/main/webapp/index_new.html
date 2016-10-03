@@ -477,109 +477,17 @@
             background: #ffde96;
         }
 
+        .words-table {
+            font-size: 14px;
+            border-collapse: collapse;
+        }
+
+        .words-table td {
+            border: 1px solid gray;
+        }
+
     </style>
     <script>
-
-/*        var isHSK = function(text) {
-            for (let i = 0; i < text.length; i++) {
-                let code = text.charCodeAt(i);
-                if ((code >= 0x4E00 && code <= 0x9FFF) || (code >= 0x3400 && code <= 0x4DBF) ||
-                        (code >= 0x20000 && code <= 0x2A6DF) || (code >= 0x2A700 && code <= 0x2B73F)) {
-                    continue;
-                }
-                return false;
-            }
-            return true;
-        };
-
-        function processHskWords(text) {
-            let chars = {};
-            let words = {"不但": 3, "而且": 3, "只有": 3, "因为": 2, "所以": 2, "虽然": 2, "但是": 2};
-            let lines = text.split("\n");
-            for (let i = 0; i < lines.length; i++) {
-                let line = lines[i];
-                let ix = line.lastIndexOf("（");
-                let word = line.substr(0, ix);
-                let stageChar = line[ix + 1];
-                let stage;
-                if (stageChar == "一") {
-                    stage = 1;
-                } else if (stageChar == "二") {
-                    stage = 2;
-                } else if (stageChar == "三") {
-                    stage = 3;
-                } else if (stageChar == "四") {
-                    stage = 4;
-                } else if (stageChar == "五") {
-                    stage = 5;
-                } else if (stageChar == "六") {
-                    stage = 6;
-                } else {
-                    throw "Invalid stage: " + stageChar;
-                }
-                if (words[word]) {
-                    throw "Duplicate word: " + word;
-                }
-                if (word.length > 1) {
-                    if (isHSK(word)) {
-                        words[word] = stage;
-                        for (let j = 0; j < word.length; j++) {
-                            let c = word[j];
-                            if (!chars[c] || chars[c] > stage) {
-                                chars[c] = stage;
-                            }
-                        }
-                    }
-                } else {
-                    let c = word[0];
-                    if (isHSK(c)) {
-                        if (!chars[c] || chars[c] > stage) {
-                            chars[c] = stage;
-                        }
-                    }
-                }
-            }
-            let charsL = [[], [], [], [], [], []];
-            let wordsL = [[], [], [], [], [], []];
-
-            for (let word in words) {
-                if (words.hasOwnProperty(word)) {
-                    wordsL[words[word] - 1].push(word);
-                }
-            }
-            for (let char in chars) {
-                if (chars.hasOwnProperty(char)) {
-                    charsL[(chars[char] - 1)].push(char);
-                }
-            }
-
-            let charsStr = "";
-            let wordsStr = "";
-
-            for (let i = 0; i < 6; i++) {
-                let cc = charsL[i];
-                let ww = wordsL[i];
-                if (i > 0) {
-                    charsStr += ":";
-                    wordsStr += ":";
-                }
-                console.log("chars[" + (i + 1) + "].len = " + cc.length);
-                for (let j = 0; j < cc.length; j++) {
-                    charsStr += cc[j];
-                }
-                for (let j = 0; j < ww.length; j++) {
-                    if (j > 0) {
-                        wordsStr += ".";
-                    }
-                    wordsStr += ww[j];
-                }
-            }
-
-            console.log(charsStr);
-            console.log(wordsStr);
-
-
-        }*/
 
         let STAGE_TRIVIA = 1;
         let STAGE_LEARN = 2;
@@ -617,6 +525,7 @@
             this.tpNew = document.getElementById("tpNew");
             this.tpSync = document.getElementById("tpSync");
             this.tpOrdered = document.getElementById("tpOrdered");
+            this.tpWords = document.getElementById("tpWords");
             this.tpColorMeaning = document.getElementById("chbColorMeaning");
             this.tpColorPinyin = document.getElementById("chbColorPinyin");
             this.tpColorWords = document.getElementById("chbColorWords");
@@ -662,6 +571,7 @@
             this.wordEdit = false;
             this.stageChangeKey = ""; // p, c, w
             this.options = {c: true, p: true, w: true};
+            this.ankiWordsCount = 0;
 
             // true = show, false = hide
             this.showhide = function(el, value) {
@@ -967,6 +877,38 @@
                 that.invalidate();
             };
 
+            this.goAnki = function() {
+                let words = [];
+                for (let i = 0; i < that.ankiWordsCount; i++) {
+                    let chb = document.getElementById("ankiChb" + i);
+                    if (chb.checked) {
+                        words.push(chb.getAttribute("data-word"));
+                    }
+                }
+                if (words.length > 0) {
+                    let res = that.dataHolder.processAnki(words);
+                    that.text.innerHTML = '<div style="font-size:12px;text-indent: 0"><pre>' + res + "</pre></div>";
+                }
+            };
+
+            this.tpWordsClick = function() {
+                let words = that.dataHolder.wordsForAnki();
+                words.sort(function(a, b) {
+                    return b.diff - a.diff;
+                });
+                that.ankiWordsCount = words.length;
+                let html = "<table class='words-table'><tbody>";
+                for (let i = 0; i < words.length; i++) {
+                    html += "<tr><td>" + words[i].word + "</td><td>" + words[i].pinyin + "</td><td>" +
+                                    words[i].meaning + "</td><td>" + that.formatDiff(words[i].diff) + "</td><td>" +
+                            "<input type='checkbox' id='ankiChb" + i + "' data-word='" + words[i].word + "'></tr>";
+                }
+                html += "</tbody></table>";
+                html += "<input id='btnGoWords' style='float: right; margin: 5px 0' type='button' value='Go'>";
+                that.text.innerHTML = html;
+                document.getElementById('btnGoWords').onclick = that.goAnki;
+            };
+
             this.tpNewText = function() {
                 that.currentText = that.newText.value;
                 that.invalidate();
@@ -1050,6 +992,7 @@
                 that.wpButton.onclick = that.wordBtnClick;
                 that.tpNew.onclick = that.tpNewClick;
                 that.tpOrdered.onclick = that.tpOrderedClick;
+                that.tpWords.onclick = that.tpWordsClick;
                 that.btnNewText.onclick = that.tpNewText;
                 that.ovDict.onblur = that.dictBlur;
                 that.ovStage.onblur = that.ovStageBlur;
@@ -1309,6 +1252,32 @@
                     }
                 }
                 return null;
+            };
+
+            this.wordsForAnki = function() {
+                let res = [];
+                for (let word in that.words) {
+                    if (that.words.hasOwnProperty(word)) {
+                        let w = that.words[word];
+                        if (w.diff > 0 && w.stage == STAGE_LEARN) {
+                            res.push(w);
+                        }
+                    }
+                }
+                return res;
+            };
+
+            this.processAnki = function(words) {
+                let output = "";
+                for (let i = 0; i < words.length; i++) {
+                    var key = words[i];
+                    let w = that.words[key];
+                    output += w.word + "\t" + w.pinyin + "\t" + w.meaning + "\n";
+                    w.diff = -1;
+                    w.stage = 1;
+                }
+                that.server.ajax("words_anki", "POST", words);
+                return output;
             }
 
         }
@@ -1450,6 +1419,7 @@
 <div class="top-menu">
     <input id="tpNew" type="button" class="right option" value="New">
     <input id="tpSync" type="button" class="right option" value="Sync">
+    <input id="tpWords" type="button" class="right option" value="Words">
     <input id="tpOrdered" type="button" class="right option" value="Ordered">
     <div class="right option">
         <input id="chbAutoDict" type="checkbox">
@@ -1548,5 +1518,3 @@
 </div>
 </body>
 </html>
-
-

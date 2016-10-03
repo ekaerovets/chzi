@@ -117,4 +117,8 @@ public class ZiService {
             dao.setPinyinStage(word, stage);
         }
     }
+
+    public void wordsAnki(List<String> words) {
+        dao.wordsAnki(words);
+    }
 }
