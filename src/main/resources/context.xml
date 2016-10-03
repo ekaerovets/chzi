@@ -15,7 +15,7 @@
           class="org.springframework.jdbc.datasource.DriverManagerDataSource">
 
         <property name="driverClassName" value="org.postgresql.Driver"/>
-        <property name="url" value="jdbc:postgresql://localhost:5432/chinese"/>
+        <property name="url" value="jdbc:postgresql://localhost:${db.port}/chinese"/>
         <property name="username" value="chinese"/>
         <property name="password" value="chinese"/>
     </bean>
