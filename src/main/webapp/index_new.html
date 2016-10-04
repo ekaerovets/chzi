@@ -791,6 +791,10 @@
                 that.cpMeanBtn.disabled = !that.cpMeanInput.value.length;
             };
 
+            this.pinKeyUp = function() {
+                that.cpPinBtn.disabled = !that.cpPinInput.value.length;
+            }
+
             that.checkWpButton = function() {
                 that.wpButton.disabled = !that.wpMeanInput.value.length || !that.wpPinInput.value.length;
             };
@@ -1028,6 +1032,7 @@
             this.bindEvents = function() {
                 that.text.onmouseup = that.textMouseUp;
                 that.cpMeanInput.onkeyup = that.meaningKeyUp;
+                that.cpPinInput.onkeyup = that.pinKeyUp;
                 that.wpMeanInput.onkeyup = that.checkWpButton;
                 that.wpPinInput.onkeyup = that.checkWpButton;
                 that.cpMeanBtn.onclick = that.meanBtnClick;
