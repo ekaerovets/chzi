@@ -793,7 +793,7 @@
 
             this.pinKeyUp = function() {
                 that.cpPinBtn.disabled = !that.cpPinInput.value.length;
-            }
+            };
 
             that.checkWpButton = function() {
                 that.wpButton.disabled = !that.wpMeanInput.value.length || !that.wpPinInput.value.length;
@@ -1484,6 +1484,7 @@
 <div id="ovContainingWords" class=" popup-center hidden">
     <div style="background: #eee;height:394px;padding: 2px;border: 1px solid black;border-radius: 4px;">
         <span id="ovCloseContainingWords" class="right">x</span>
+
         <div id="containingWordsList"></div>
     </div>
 </div>
@@ -1498,6 +1499,7 @@
     <input id="tpSync" type="button" class="right option" value="Sync">
     <input id="tpWords" type="button" class="right option" value="Words">
     <input id="tpOrdered" type="button" class="right option" value="Ordered">
+
     <div class="right option">
         <input id="chbAutoDict" type="checkbox">
         <label for="chbAutoDict">Auto dict</label>
@@ -1540,17 +1542,17 @@
                 <div class="row">
                     <span id="cpMeanStage" class="stage stage-set">T</span>
                     <input id="cpMeanBtn" type="button" class="right" value="Add">
-                            <span id="cpMeanWrapper" class="center">
-                                <input id="cpMeanInput" type="text">
-                            </span>
+                        <span id="cpMeanWrapper" class="center">
+                            <input id="cpMeanInput" type="text">
+                        </span>
                     <span id="cpMeanSpan" class="meaning">dao/tao</span>
                 </div>
                 <div class="row">
                     <span id="cpPinStage" class="stage stage-set">L(24)</span>
                     <input id="cpPinBtn" type="button" class="right" value="Edit">
-                            <span id="cpPinWrapper" class="center">
-                                <input id="cpPinInput" type="text">
-                            </span>
+                        <span id="cpPinWrapper" class="center">
+                            <input id="cpPinInput" type="text">
+                        </span>
                     <span id="cpPinSpan" class="meaning">dao/tao</span>
                 </div>
                 <div class="row">
@@ -1571,6 +1573,7 @@
         </div>
         <div class="word-left">
             <span id="wpWord" class="word">&#20999;&#22312;&#31209;&#24207;</span>
+
             <div class="word-info">
                 <span id="wpStage" class="freq-span">L(23)</span>
                 <span id="wpHsk" class="freq-span"></span>
@@ -1584,9 +1587,9 @@
                 </div>
                 <div class="row">
                     <input id="wpButton" type="button" class="right" value="Edit">
-                            <span id="wpPinWrapper" class="center">
-                                <input id="wpPinInput" type="text">
-                            </span>
+                        <span id="wpPinWrapper" class="center">
+                            <input id="wpPinInput" type="text">
+                        </span>
                     <span id="wpPinSpan" class="word-meaning"></span>
                 </div>
             </div>
