@@ -5,14 +5,17 @@ import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import ru.ekaerovets.model.Char;
 import ru.ekaerovets.model.Pinyin;
 import ru.ekaerovets.model.Word;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -250,4 +253,36 @@ public class Dao {
             }
         });
     }
+
+    public void batchTest() {
+        long start = System.currentTimeMillis();
+
+        List<String> mockData = new ArrayList<>();
+
+        for (int i = 0; i < 101; i++) {
+            mockData.add("sft" + i);
+        }
+
+        try (Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            PreparedStatement ps = conn.prepareStatement("update test set field1 = ?, field2 = ? where id = ?");
+
+            for (int i = 0; i < 100; i++) {
+                ps.setString(1, mockData.get(i + 1));
+                ps.setString(2, mockData.get(i + 1));
+                ps.setInt(3, i);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+            ps.clearBatch();
+            conn.commit();
+            ps.close();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Batch test run into " + (System.currentTimeMillis() - start) + "ms");
+    }
+
 }

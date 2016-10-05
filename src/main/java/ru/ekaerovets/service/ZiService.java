@@ -2,6 +2,7 @@ package ru.ekaerovets.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import ru.ekaerovets.dao.Dao;
 import ru.ekaerovets.model.Char;
 import ru.ekaerovets.model.MobileSyncData;
@@ -24,6 +25,7 @@ public class ZiService {
     @Autowired
     private Dao dao;
 
+    @Transactional
     public MobileSyncData syncMobile(MobileSyncData input) {
         MobileSyncData current = loadData();
         return new MobileSyncData(mergeChars(input.getChars(), current.getChars()),
@@ -33,16 +35,21 @@ public class ZiService {
 
     private List<Char> mergeChars(List<Char> mobile, List<Char> db) {
         Map<String, Char> mobileMap = mobile.stream().collect(Collectors.toMap(Char::getWord, Function.identity()));
+        List<Char> toUpdate = new ArrayList<>();
         db.forEach((c) -> {
             if (mobileMap.containsKey(c.getWord())) {
-                if (!c.isOverride()) {
+                if (c.isOverride()) {
+                    toUpdate.add(c);
+                } else {
                     Char m = mobileMap.get(c.getWord());
                     c.setStage(m.getStage());
                     c.setDiff(m.getDiff());
+                    toUpdate.add(c);
                 }
             }
         });
-        dao.updateCharsOnSync(db);
+        // updates only stage and diff
+        dao.updateCharsOnSync(toUpdate);
         return db;
     }
 
@@ -51,31 +58,39 @@ public class ZiService {
             mobile = new ArrayList<>();
         }
         Map<String, Word> mobileMap = mobile.stream().collect(Collectors.toMap(Word::getWord, Function.identity()));
+        List<Word> toUpdate = new ArrayList<>();
         db.forEach((c) -> {
             if (mobileMap.containsKey(c.getWord())) {
-                if (!c.isOverride()) {
+                if (c.isOverride()) {
+                    toUpdate.add(c);
+                } else {
                     Word m = mobileMap.get(c.getWord());
                     c.setStage(m.getStage());
                     c.setDiff(m.getDiff());
+                    toUpdate.add(c);
                 }
             }
         });
-        dao.updateWordsOnSync(db);
+        dao.updateWordsOnSync(toUpdate);
         return db;
     }
 
     private List<Pinyin> mergePinyins(List<Pinyin> mobile, List<Pinyin> db) {
         Map<String, Pinyin> mobileMap = mobile.stream().collect(Collectors.toMap(Pinyin::getWord, Function.identity()));
+        List<Pinyin> toUpdate = new ArrayList<>();
         db.forEach((p) -> {
             if (mobileMap.containsKey(p.getWord())) {
-                if (!p.isOverride()) {
+                if (p.isOverride()) {
+                    toUpdate.add(p);
+                } else {
                     Pinyin m = mobileMap.get(p.getWord());
                     p.setStage(m.getStage());
                     p.setDiff(m.getDiff());
+                    toUpdate.add(p);
                 }
             }
         });
-        dao.updatePinyinsOnSync(db);
+        dao.updatePinyinsOnSync(toUpdate);
         return db;
     }
 
@@ -121,4 +136,9 @@ public class ZiService {
     public void wordsAnki(List<String> words) {
         dao.wordsAnki(words);
     }
+
+    public void test() {
+        dao.batchTest();
+    }
+
 }
