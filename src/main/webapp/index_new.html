@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+
+    <script src="plugins.js"></script>
+
     <style>
         body {
             background: #eee;
@@ -1469,10 +1472,17 @@
             let textProcessor = new TextProcessor(dataHolder);
             let ui = new UI(dataHolder,textProcessor);
             ui.init();
+
+            window.runCommand = function(command) {
+                pluginManager.run(command, {dataHolder: dataHolder, ui: ui});
+            }
+
         }
+
         window.onload = function() {
             init();
         }
+
     </script>
 </head>
 <body>
