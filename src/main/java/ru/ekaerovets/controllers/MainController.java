@@ -115,10 +115,4 @@ public class MainController {
         resp.getWriter().flush();
     }
 
-    @RequestMapping(method = RequestMethod.GET, value="/test")
-    public ResponseEntity<Void> test() {
-        ziService.test();
-        return ResponseEntity.ok().build();
-    }
-
 }

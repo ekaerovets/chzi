@@ -254,35 +254,4 @@ public class Dao {
         });
     }
 
-    public void batchTest() {
-        long start = System.currentTimeMillis();
-
-        List<String> mockData = new ArrayList<>();
-
-        for (int i = 0; i < 101; i++) {
-            mockData.add("sft" + i);
-        }
-
-        try (Connection conn = dataSource.getConnection()) {
-            conn.setAutoCommit(false);
-            PreparedStatement ps = conn.prepareStatement("update test set field1 = ?, field2 = ? where id = ?");
-
-            for (int i = 0; i < 100; i++) {
-                ps.setString(1, mockData.get(i + 1));
-                ps.setString(2, mockData.get(i + 1));
-                ps.setInt(3, i);
-                ps.addBatch();
-            }
-            ps.executeBatch();
-            ps.clearBatch();
-            conn.commit();
-            ps.close();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        System.out.println("Batch test run into " + (System.currentTimeMillis() - start) + "ms");
-    }
-
 }

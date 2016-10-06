@@ -137,8 +137,4 @@ public class ZiService {
         dao.wordsAnki(words);
     }
 
-    public void test() {
-        dao.batchTest();
-    }
-
 }

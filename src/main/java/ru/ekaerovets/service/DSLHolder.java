@@ -10,8 +10,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author karyakin dmitry
@@ -26,19 +26,18 @@ public class DSLHolder {
     private Map<String, Entry> entries;
 
     public static void main(String[] args) throws IOException {
-        byte[] bytes = Files.readAllBytes(Paths.get("C:\\\\proj\\\\chzi\\\\dabkrs\\\\bkrs_v71.dsl"));
-        boolean skip = true;
-        for (int i = 0; i < 100000000; i++) {
-            if (bytes[i] == 53 && bytes[i + 1] == 85) {
-                if (skip) {
-                    skip = false;
-                    continue;
-                }
-                for (int j = 0; j < 30; j++) {
-                    System.out.print(Integer.toHexString(0xFF & bytes[i + j]) + " ");
-                }
-            }
+        Map<String, Entry> entries = new DSLHolder().readDSL("C:/proj/chzi/dabkrs/bkrs_v71.dsl");
+
+        List<String> words = entries.keySet().stream().filter((e) -> e.length() == 2).collect(Collectors.toList());
+        System.out.println(words.size());
+
+        Set<String> rand = new HashSet<>();
+        for (int i = 0; i < 100; i++) {
+            rand.add(words.get((int) (Math.random() * words.size())));
         }
+
+        String s = rand.toString();
+        System.out.println(s);
 
     }
 

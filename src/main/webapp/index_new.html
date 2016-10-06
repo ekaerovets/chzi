@@ -1288,7 +1288,7 @@
                 for (let i = 2; i < 7; i++) {
                     var word = that.words[fragment.substr(0, i)];
                     if (word) {
-                        return {len: i, stage: word.diff < 0 ? STAGE_QUEUE : STAGE_LEARN}
+                        return {len: i, stage: word.stage == STAGE_LEARN ? (word.diff < 0 ? STAGE_QUEUE : STAGE_LEARN) : word.stage}
                     }
                 }
             };
