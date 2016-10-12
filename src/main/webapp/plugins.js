@@ -50,7 +50,7 @@ function shuffle(array) {
     return array;
 }
 
-
+/* --- prelearn pinyins --- */
 
 pluginManager.register("test", function(input) {
     alert("hello");
@@ -131,5 +131,27 @@ pluginManager.register("prelearn", function(input) {
     }
 
     reset();
+
+});
+
+/* --- show stat on words --- */
+pluginManager.register("wordstat", function(input) {
+    let words = input.dataHolder.words;
+
+    let usedChars = {};
+    let count = 0;
+
+    for (let key in words) {
+        if (words.hasOwnProperty(key)) {
+            for (let i = 0; i < key.length; i++) {
+                if (!usedChars[key[i]]) {
+                    count++;
+                    usedChars[key[i]] = true;
+                }
+            }
+        }
+    }
+
+    console.log("Total used characters count is " + count);
 
 });
