@@ -545,6 +545,7 @@
             this.tpNew = document.getElementById("tpNew");
             this.tpSync = document.getElementById("tpSync");
             this.tpOrdered = document.getElementById("tpOrdered");
+            this.tpBackup = document.getElementById("tpBackup");
             this.tpWords = document.getElementById("tpWords");
             this.tpColorMeaning = document.getElementById("chbColorMeaning");
             this.tpColorPinyin = document.getElementById("chbColorPinyin");
@@ -908,6 +909,11 @@
                 that.invalidate();
             };
 
+            this.tpBackupClick = function() {
+                that.dataHolder.backup();
+                alert("success");
+            };
+
             this.goAnki = function() {
                 let words = [];
                 for (let i = 0; i < that.ankiWordsCount; i++) {
@@ -1043,6 +1049,7 @@
                 that.wpButton.onclick = that.wordBtnClick;
                 that.tpNew.onclick = that.tpNewClick;
                 that.tpOrdered.onclick = that.tpOrderedClick;
+                that.tpBackup.onclick = that.tpBackupClick;
                 that.tpWords.onclick = that.tpWordsClick;
                 that.btnNewText.onclick = that.tpNewText;
                 that.ovDict.onblur = that.dictBlur;
@@ -1352,6 +1359,10 @@
                     }
                 }
                 return res;
+            };
+
+            this.backup = function() {
+                that.server.ajax("backup", "POST");
             }
 
         }
@@ -1506,9 +1517,10 @@
 </div>
 <div class="top-menu">
     <input id="tpNew" type="button" class="right option" value="New">
-    <input id="tpSync" type="button" class="right option" value="Sync">
+    <input id="tpSync" type="button" class="right option" value="Sync" style="display: none">
     <input id="tpWords" type="button" class="right option" value="Words">
     <input id="tpOrdered" type="button" class="right option" value="Ordered">
+    <input id="tpBackup" type="button" class="right option" value="Backup">
 
     <div class="right option">
         <input id="chbAutoDict" type="checkbox">

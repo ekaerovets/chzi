@@ -1,6 +1,7 @@
 package ru.ekaerovets.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.ekaerovets.dao.Dao;
@@ -9,7 +10,13 @@ import ru.ekaerovets.model.MobileSyncData;
 import ru.ekaerovets.model.Pinyin;
 import ru.ekaerovets.model.Word;
 
+import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.time.DateTimeException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -24,6 +31,9 @@ public class ZiService {
 
     @Autowired
     private Dao dao;
+
+    @Value("${backup.dir}")
+    private String backupDir;
 
     @Transactional
     public MobileSyncData syncMobile(MobileSyncData input) {
@@ -135,6 +145,20 @@ public class ZiService {
 
     public void wordsAnki(List<String> words) {
         dao.wordsAnki(words);
+    }
+
+    public void backup(String json, boolean isMobile) {
+        if (backupDir != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh-mm-ss.sss");
+            String format = sdf.format(new Date());
+            String fName = (isMobile ? "m_" : "") + format + ".json";
+            Path path = Paths.get(backupDir, fName);
+            try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(path.toFile()), "UTF8")) {
+                out.write(json);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
 }

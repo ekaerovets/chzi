@@ -48,6 +48,7 @@ public class MainController {
      */
     @RequestMapping(method = RequestMethod.POST, value = "/sync_pinyin")
     private void syncPinyin(@RequestBody String input, HttpServletResponse resp) throws IOException {
+        ziService.backup(input, true);
         MobileSyncData data = gson.fromJson(input, MobileSyncData.class);
         MobileSyncData res = ziService.syncMobile(data);
         String json = gson.toJson(res);
@@ -113,6 +114,12 @@ public class MainController {
         String html = pinyinParser.getHtml();
         resp.getWriter().write(html);
         resp.getWriter().flush();
+    }
+
+    @RequestMapping(method = RequestMethod.POST, value = "/backup")
+    public ResponseEntity<Void> backup(HttpServletResponse resp) {
+        ziService.backup(gson.toJson(ziService.loadData()), false);
+        return ResponseEntity.ok().build();
     }
 
 }
