@@ -511,6 +511,7 @@
         let STAGE_NEW = 3;
         let STAGE_QUEUE = 4;
         let STAGE_UNKNOWN = 5;
+        let STAGE_ANKI = 4;
 
         let OFFLINE = false;
         let HOST = "rest/";
@@ -547,6 +548,7 @@
             this.tpOrdered = document.getElementById("tpOrdered");
             this.tpBackup = document.getElementById("tpBackup");
             this.tpWords = document.getElementById("tpWords");
+            this.tpAnki = document.getElementById("tpAnki");
             this.tpColorMeaning = document.getElementById("chbColorMeaning");
             this.tpColorPinyin = document.getElementById("chbColorPinyin");
             this.tpColorWords = document.getElementById("chbColorWords");
@@ -593,7 +595,6 @@
             this.wordEdit = false;
             this.stageChangeKey = ""; // p, c, w
             this.options = {c: true, p: true, w: true, d: false};
-            this.ankiWordsCount = 0;
 
             // true = show, false = hide
             this.showhide = function(el, value) {
@@ -914,18 +915,10 @@
                 alert("success");
             };
 
-            this.goAnki = function() {
-                let words = [];
-                for (let i = 0; i < that.ankiWordsCount; i++) {
-                    let chb = document.getElementById("ankiChb" + i);
-                    if (chb.checked) {
-                        words.push(chb.getAttribute("data-word"));
-                    }
-                }
-                if (words.length > 0) {
-                    let res = that.dataHolder.processAnki(words);
-                    that.text.innerHTML = '<div style="font-size:12px;text-indent: 0"><pre>' + res + "</pre></div>";
-                }
+            this.tpAnkiClick = function() {
+                let res = that.dataHolder.getAnki();
+                that.text.innerHTML = '<div style="font-size:12px;text-indent: 0"><pre>' + res + "</pre></div>";
+
             };
 
             this.tpWordsClick = function() {
@@ -1051,6 +1044,7 @@
                 that.tpOrdered.onclick = that.tpOrderedClick;
                 that.tpBackup.onclick = that.tpBackupClick;
                 that.tpWords.onclick = that.tpWordsClick;
+                that.tpAnki.onclick = that.tpAnkiClick;
                 that.btnNewText.onclick = that.tpNewText;
                 that.ovDict.onblur = that.dictBlur;
                 that.ovStage.onblur = that.ovStageBlur;
@@ -1328,16 +1322,18 @@
                 return res;
             };
 
-            this.processAnki = function(words) {
+            this.getAnki = function() {
                 let output = "";
-                for (let i = 0; i < words.length; i++) {
-                    var key = words[i];
-                    let w = that.words[key];
-                    output += w.word + "\t" + w.pinyin + "\t" + w.meaning + "\n";
-                    w.diff = -1;
-                    w.stage = 1;
+                for (let key in that.words) {
+                    if (that.words.hasOwnProperty(key)) {
+                        let w = that.words[key];
+                        if (w.stage == STAGE_ANKI) {
+                            w.stage = STAGE_TRIVIA;
+                            output += w.word + "\t" + w.pinyin + "\t" + w.meaning + "\n";
+                        }
+                    }
                 }
-                that.server.ajax("words_anki", "POST", words);
+                that.server.ajax("words_anki", "POST");
                 return output;
             };
 
@@ -1518,8 +1514,9 @@
 <div class="top-menu">
     <input id="tpNew" type="button" class="right option" value="New">
     <input id="tpSync" type="button" class="right option" value="Sync" style="display: none">
-    <input id="tpWords" type="button" class="right option" value="Words">
-    <input id="tpOrdered" type="button" class="right option" value="Ordered">
+    <input id="tpWords" type="button" class="right option" value="Words" style="display: none">
+    <input id="tpAnki" type="button" class="right option" value="Anki">
+    <input id="tpOrdered" type="button" class="right option" value="Ord">
     <input id="tpBackup" type="button" class="right option" value="Backup">
 
     <div class="right option">

@@ -143,8 +143,8 @@ public class ZiService {
         }
     }
 
-    public void wordsAnki(List<String> words) {
-        dao.wordsAnki(words);
+    public void wordsAnki() {
+        dao.wordsAnki();
     }
 
     public void backup(String json, boolean isMobile) {

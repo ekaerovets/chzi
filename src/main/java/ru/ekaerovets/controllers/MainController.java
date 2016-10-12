@@ -17,7 +17,6 @@ import ru.ekaerovets.service.ZiService;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -103,9 +102,8 @@ public class MainController {
     }
 
     @RequestMapping(method = RequestMethod.POST, value = "/words_anki")
-    public ResponseEntity<Void> wordsAnki(@RequestBody String wordsJson) {
-        List<String> words = gson.fromJson(wordsJson, new TypeToken<List<String>>(){}.getType());
-        ziService.wordsAnki(words);
+    public ResponseEntity<Void> wordsAnki(HttpServletResponse resp) {
+        ziService.wordsAnki();
         return ResponseEntity.ok().build();
     }
 
