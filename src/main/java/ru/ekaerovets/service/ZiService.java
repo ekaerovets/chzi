@@ -149,7 +149,7 @@ public class ZiService {
 
     public void backup(String json, boolean isMobile) {
         if (backupDir != null) {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh-mm-ss.sss");
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss.sss");
             String format = sdf.format(new Date());
             String fName = (isMobile ? "m_" : "") + format + ".json";
             Path path = Paths.get(backupDir, fName);
