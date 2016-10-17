@@ -52,36 +52,53 @@ function shuffle(array) {
 
 /* --- prelearn pinyins --- */
 
-pluginManager.register("test", function(input) {
-    alert("hello");
-});
-
-
 pluginManager.register("prelearn", function(input) {
     let dataHolder = input.dataHolder;
     let chars = dataHolder.chars;
     let pinyins = dataHolder.pinyins;
-    let pinsToLearn = [];
-    for (let k in pinyins) {
-        if (pinyins.hasOwnProperty(k)) {
-            let pin = pinyins[k];
-            if (pin.stage == 2 && pin.diff < 0) {
-                pinsToLearn.push(pin);
+
+    let items = [];
+    if (input.params == 'p') {
+        for (let k in pinyins) {
+            if (pinyins.hasOwnProperty(k)) {
+                let pin = pinyins[k];
+                if (pin.stage == 2 && pin.diff < 0) {
+                    let v = pin.pinyin;
+                    if (chars[pin.word]) {
+                        v += " (" + chars[pin.word].meaning + ")";
+                    }
+                    items.push({k: pin.word, v: v});
+                }
+            }
+        }
+    } else {
+        for (let k in chars) {
+            if (chars.hasOwnProperty(k)) {
+                let char = chars[k];
+                if (char.stage == 2 && char.diff < 0) {
+                    let v = char.meaning;
+                    if (pinyins[char.word]) {
+                        v += " (" + pinyins[char.word].pinyin + ")";
+                    }
+                    items.push({k: char.word, v: v});
+                }
             }
         }
     }
 
+
+
     function remove(key) {
-        for (let i = 0; i < pinsToLearn.length; i++) {
-            if (pinsToLearn[i].word == key) {
-                pinsToLearn.splice(i, 1);
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].k == key) {
+                items.splice(i, 1);
                 return;
             }
         }
     }
 
     function reset() {
-        shuffle(pinsToLearn);
+        shuffle(items);
         var root = document.getElementById("divPrelearn");
         if (!root) {
             root = document.createElement("div");
@@ -92,18 +109,14 @@ pluginManager.register("prelearn", function(input) {
         let html = "<div style='position: fixed;width: 400px;height: 400px;background: white;border: 2px solid orange;border-radius: 10px;left: 10px;top: 10px;'>";
         let l = 10;
         let t = 10;
-        for (let i = 0; i < pinsToLearn.length; i++) {
-            let tooltip = pinsToLearn[i].pinyin;
-            let key = pinsToLearn[i].word;
-
-            if (chars[key]) {
-                tooltip += " (" + chars[key].meaning + ")";
-            }
+        for (let i = 0; i < items.length; i++) {
+            let tooltip = items[i].v;
+            let key = items[i].k;
 
             html += "<div id='prel" + i + "' data-key='" + key +
                 "' style='position: absolute; left:" + l + "px; top:" + t +
                 "px;background: #ffffcf;padding: 3px 4px;cursor: default;border: 1px solid orange;border-radius: 5px;' title='" +
-                tooltip + "'>" + pinsToLearn[i].word + "</div>";
+                tooltip + "'>" + items[i].k + "</div>";
             l += 30;
             if (l > 380) {
                 l = 10;
@@ -114,7 +127,7 @@ pluginManager.register("prelearn", function(input) {
         html += "</div>";
         root.innerHTML = html;
 
-        for (let i = 0; i < pinsToLearn.length; i++) {
+        for (let i = 0; i < items.length; i++) {
             var el = document.getElementById("prel" + i);
             el.onclick = function() {
                 this.style.display = "none";
@@ -154,4 +167,23 @@ pluginManager.register("wordstat", function(input) {
 
     console.log("Total used characters count is " + count);
 
+});
+
+
+/* --- shows words or pinyins that are being learned --- */
+pluginManager.register("taoyan", function(input) {
+    let params = input.params;
+    let data = (params == 'p') ? input.dataHolder.pinyins : input.dataHolder.chars;
+
+    let str = "";
+    for (let key in data) {
+        if (data.hasOwnProperty(key)) {
+            if (data[key].stage == 2 && data[key].diff > 0) {
+                str += key;
+            }
+        }
+    }
+
+    input.ui.currentText = str;
+    input.ui.invalidate();
 });

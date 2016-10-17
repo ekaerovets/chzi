@@ -545,6 +545,7 @@
             // top panel
             this.tpNew = document.getElementById("tpNew");
             this.tpSync = document.getElementById("tpSync");
+            this.tpPlugin = document.getElementById("tpPlugin");
             this.tpOrdered = document.getElementById("tpOrdered");
             this.tpBackup = document.getElementById("tpBackup");
             this.tpWords = document.getElementById("tpWords");
@@ -661,6 +662,7 @@
                 that.cpMeanBtn.value = c ? "Edit" : "Save";
                 if (c) {
                     that.cpMeanSpan.textContent = c.meaning;
+                    that.cpMeanSpan.title = c.meaning;
                 } else {
                     that.cpMeanInput.value = "";
                 }
@@ -910,6 +912,14 @@
                 that.invalidate();
             };
 
+            this.tpPluginKeyPress = function(event) {
+                if (event.ctrlKey && event.keyCode == 10) {
+                    var command = that.tpPlugin.value;
+                    that.tpPlugin.value = "";
+                    runCommand(command);
+                }
+            };
+
             this.tpBackupClick = function() {
                 that.dataHolder.backup();
                 alert("success");
@@ -1042,6 +1052,7 @@
                 that.wpButton.onclick = that.wordBtnClick;
                 that.tpNew.onclick = that.tpNewClick;
                 that.tpOrdered.onclick = that.tpOrderedClick;
+                that.tpPlugin.onkeypress = that.tpPluginKeyPress;
                 that.tpBackup.onclick = that.tpBackupClick;
                 that.tpWords.onclick = that.tpWordsClick;
                 that.tpAnki.onclick = that.tpAnkiClick;
@@ -1513,11 +1524,12 @@
 </div>
 <div class="top-menu">
     <input id="tpNew" type="button" class="right option" value="New">
+    <input id="tpPlugin" type="text" class="right option" style="margin-right: 0;width: 100px;">
     <input id="tpSync" type="button" class="right option" value="Sync" style="display: none">
     <input id="tpWords" type="button" class="right option" value="Words" style="display: none">
-    <input id="tpAnki" type="button" class="right option" value="Anki">
-    <input id="tpOrdered" type="button" class="right option" value="Ord">
-    <input id="tpBackup" type="button" class="right option" value="Backup">
+    <input id="tpAnki" type="button" class="right option" value="Anki" style="display: none">
+    <input id="tpOrdered" type="button" class="right option" value="Ord" style="display: none">
+    <input id="tpBackup" type="button" class="right option" value="Backup" style="display: none">
 
     <div class="right option">
         <input id="chbAutoDict" type="checkbox">
