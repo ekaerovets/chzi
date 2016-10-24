@@ -928,7 +928,6 @@
             this.tpAnkiClick = function() {
                 let res = that.dataHolder.getAnki();
                 that.text.innerHTML = '<div style="font-size:12px;text-indent: 0"><pre>' + res + "</pre></div>";
-
             };
 
             this.tpWordsClick = function() {
@@ -994,8 +993,16 @@
                 let words = that.dataHolder.getContainingWords(that.selection);
                 let html = "<table class='words-table'><tbody>";
                 for (let i = 0; i < words.length; i++) {
+                    let diff;
+                    if (words[i].stage == STAGE_TRIVIA) {
+                        diff = "T";
+                    } else if (words[i].stage == STAGE_ANKI) {
+                        diff = "A"
+                    } else {
+                        diff = that.formatDiff(words[i].diff);
+                    }
                     html += "<tr><td>" + words[i].word + "</td><td>" + words[i].pinyin + "</td><td>" +
-                            words[i].meaning + "</td><td>" + that.formatDiff(words[i].diff) + "</td></tr>";
+                            words[i].meaning + "</td><td>" + diff + "</td></tr>";
                 }
                 html += "</tbody></table>";
                 that.showhide(that.ovOverlay, true);

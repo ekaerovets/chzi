@@ -187,3 +187,8 @@ pluginManager.register("taoyan", function(input) {
     input.ui.currentText = str;
     input.ui.invalidate();
 });
+
+/* --- list of words for anki --- */
+pluginManager.register("ankiwords", function(input) {
+    input.ui.tpAnkiClick();
+});
