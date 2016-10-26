@@ -169,6 +169,25 @@ pluginManager.register("wordstat", function(input) {
 
 });
 
+/* --- shows words or pinyins that are queued --- */
+pluginManager.register("queue", function(input) {
+    let params = input.params;
+    let data = (params == 'p') ? input.dataHolder.pinyins : input.dataHolder.chars;
+
+    let items = [];
+
+    for (let key in data) {
+        if (data.hasOwnProperty(key)) {
+            if (data[key].stage == 2 && data[key].diff < 0) {
+                items.push(key);
+            }
+        }
+    }
+
+    items = shuffle(items);
+    input.ui.currentText = items.join("");
+    input.ui.invalidate();
+});
 
 /* --- shows words or pinyins that are being learned --- */
 pluginManager.register("taoyan", function(input) {
@@ -186,6 +205,36 @@ pluginManager.register("taoyan", function(input) {
 
     input.ui.currentText = str;
     input.ui.invalidate();
+});
+
+pluginManager.register("smoke", function(input) {
+
+    if (!input.params) {
+        alert("usage: smoke p|c [count]");
+        return;
+    }
+    let params = input.params.split(" ");
+
+    let data = (params[0] == 'p') ? input.dataHolder.pinyins : input.dataHolder.chars;
+    let count = params.length > 1 ? params[1] | 0 : -1;
+
+    let items = [];
+    for (let key in data) {
+        if (data.hasOwnProperty(key)) {
+            if (data[key].stage == 1) {
+                items.push(key);
+            }
+        }
+    }
+
+    shuffle(items);
+    if (count != -1 && count < items.length) {
+        items.length = count;
+    }
+
+    input.ui.currentText = items.join("");
+    input.ui.invalidate();
+
 });
 
 /* --- list of words for anki --- */
