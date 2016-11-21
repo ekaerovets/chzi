@@ -11,6 +11,7 @@ public class MobileSyncData {
     private List<Char> chars;
     private List<Word> words;
     private List<Pinyin> pinyins;
+    private List<Stat> stat;
 
     public MobileSyncData(List<Char> chars, List<Word> words, List<Pinyin> pinyins) {
         this.chars = chars;
@@ -28,5 +29,9 @@ public class MobileSyncData {
 
     public List<Pinyin> getPinyins() {
         return pinyins;
+    }
+
+    public List<Stat> getStat() {
+        return stat;
     }
 }

@@ -8,11 +8,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.ekaerovets.model.Char;
 import ru.ekaerovets.model.Pinyin;
+import ru.ekaerovets.model.Stat;
 import ru.ekaerovets.model.Word;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -23,6 +25,7 @@ import java.util.List;
  *         date 30.10.15.
  */
 @Component
+@Transactional
 public class Dao {
 
     @Autowired
@@ -179,6 +182,21 @@ public class Dao {
         jt.update(sql, ps -> {
             ps.setString(1, p.getWord());
             ps.setString(2, p.getPinyin());
+        });
+    }
+
+    public void insertStat(Stat s) {
+        String sql = "insert into stat(session_start, session_end, type, total_answers, review_wrong, review_correct, " +
+                "learn_wrong, learn_correct) values (?, ?, ?, ?, ?, ?, ?, ?)";
+        jt.update(sql, ps -> {
+            ps.setDate(1, new Date(s.getSessionStart().getTime()));
+            ps.setDate(2, new Date(s.getSessionEnd().getTime()));
+            ps.setString(3, Character.toString(s.getType()));
+            ps.setInt(4, s.getTotalAnswers());
+            ps.setInt(5, s.getReviewWrong());
+            ps.setInt(6, s.getReviewCorrect());
+            ps.setInt(7, s.getLearnWrong());
+            ps.setInt(8, s.getLearnCorrect());
         });
     }
 

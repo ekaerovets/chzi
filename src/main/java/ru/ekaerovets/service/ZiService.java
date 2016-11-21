@@ -5,10 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.ekaerovets.dao.Dao;
-import ru.ekaerovets.model.Char;
-import ru.ekaerovets.model.MobileSyncData;
-import ru.ekaerovets.model.Pinyin;
-import ru.ekaerovets.model.Word;
+import ru.ekaerovets.model.*;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -38,6 +35,7 @@ public class ZiService {
     @Transactional
     public MobileSyncData syncMobile(MobileSyncData input) {
         MobileSyncData current = loadData();
+        addStat(input.getStat());
         return new MobileSyncData(mergeChars(input.getChars(), current.getChars()),
                 mergeWords(input.getWords(), current.getWords()),
                 mergePinyins(input.getPinyins(), current.getPinyins()));
@@ -104,6 +102,12 @@ public class ZiService {
         return db;
     }
 
+
+    public void addStat(List<Stat> stat) {
+        if (stat != null) {
+            stat.forEach(dao::insertStat);
+        }
+    }
 
     public MobileSyncData loadData() {
         return new MobileSyncData(dao.loadChars(), dao.loadWords(), dao.loadPinyins());
