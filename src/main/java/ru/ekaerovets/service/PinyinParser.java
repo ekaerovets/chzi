@@ -3,7 +3,7 @@ package ru.ekaerovets.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.ekaerovets.dao.Dao;
-import ru.ekaerovets.model.Pinyin;
+import ru.ekaerovets.model.Item;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,14 +33,14 @@ public class PinyinParser {
             "ong", "ia", "iao", "ie", "iu", "ian", "in", "iang", "ing", "iong", "u", "ua", "uo", "uai", "ui", "ue", "uan", "un",
             "uang", "ü", "üe"};
 
-    private Map<String, List<CharInfo>> parseData(List<Pinyin> input) {
+    private Map<String, List<CharInfo>> parseData(List<Item> input) {
         Map<String, List<CharInfo>> res = new HashMap<>();
         for (String initial : INITIALS) {
             for (String finale : FINALS) {
                 res.put(initial + finale, new ArrayList<>());
             }
         }
-        for (Pinyin pinyin : input) {
+        for (Item pinyin : input) {
             List<String> untoned = parsePinyin(pinyin.getPinyin());
             for (String val : untoned) {
                 CharInfo charInfo = getCharInfo(val, pinyin.getWord());
@@ -55,7 +55,7 @@ public class PinyinParser {
     }
 
     public String getHtml() {
-        List<Pinyin> pinyins = dao.loadPinyins();
+        List<Item> pinyins = dao.loadPinyins();
         Map<String, List<CharInfo>> parsedMap = parseData(pinyins);
         String[][] cells = new String[INITIALS.length + 1][];
         for (int i = 0; i < cells.length; i++) {

@@ -8,10 +8,8 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author karyakin dmitry
@@ -25,21 +23,6 @@ public class DSLHolder {
 
     private Map<String, Entry> entries;
 
-    public static void main(String[] args) throws IOException {
-        Map<String, Entry> entries = new DSLHolder().readDSL("C:/proj/chzi/dabkrs/bkrs_v71.dsl");
-
-        List<String> words = entries.keySet().stream().filter((e) -> e.length() == 2).collect(Collectors.toList());
-        System.out.println(words.size());
-
-        Set<String> rand = new HashSet<>();
-        for (int i = 0; i < 100; i++) {
-            rand.add(words.get((int) (Math.random() * words.size())));
-        }
-
-        String s = rand.toString();
-        System.out.println(s);
-
-    }
 
     public DSLHolder() {
 

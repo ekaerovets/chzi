@@ -5,13 +5,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.ekaerovets.dao.Dao;
-import ru.ekaerovets.model.*;
+import ru.ekaerovets.model.Item;
+import ru.ekaerovets.model.ItemWrapper;
+import ru.ekaerovets.model.Stat;
+import ru.ekaerovets.model.SyncData;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.time.DateTimeException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -33,72 +37,43 @@ public class ZiService {
     private String backupDir;
 
     @Transactional
-    public MobileSyncData syncMobile(MobileSyncData input) {
-        MobileSyncData current = loadData();
+    public SyncData syncMobile(SyncData input) {
+        SyncData current = loadData();
         addStat(input.getStat());
-        return new MobileSyncData(mergeChars(input.getChars(), current.getChars()),
-                mergeWords(input.getWords(), current.getWords()),
-                mergePinyins(input.getPinyins(), current.getPinyins()));
+        SyncData res = new SyncData();
+        res.setChars(merge(input.getChars(), current.getChars(), true, false));
+        res.setPinyins(merge(input.getPinyins(), current.getPinyins(), false, true));
+        res.setWords(merge(input.getWords(), current.getWords(), true, true));
+        return res;
     }
 
-    private List<Char> mergeChars(List<Char> mobile, List<Char> db) {
-        Map<String, Char> mobileMap = mobile.stream().collect(Collectors.toMap(Char::getWord, Function.identity()));
-        List<Char> toUpdate = new ArrayList<>();
-        db.forEach((c) -> {
-            if (mobileMap.containsKey(c.getWord())) {
-                if (c.isOverride()) {
-                    toUpdate.add(c);
+    private List<Item> merge(List<Item> mobile, List<Item> db, boolean m, boolean p) {
+        Map<String, Item> mobileMap = mobile.stream().collect(Collectors.toMap(Item::getWord, Function.<Item>identity()));
+        List<Item> toUpdate = new ArrayList<>();
+        db.forEach((item) -> {
+            if (mobileMap.containsKey(item.getWord())) {
+                if (item.isOverride()) {
+                    // flag override should be cleared
+                    toUpdate.add(item);
                 } else {
-                    Char m = mobileMap.get(c.getWord());
-                    c.setStage(m.getStage());
-                    c.setDiff(m.getDiff());
-                    toUpdate.add(c);
+                    // Update existing items only if there were changes in this item
+                    // (thus reducing DB traffic significantly)
+                    Item mobileItem = mobileMap.get(item.getWord());
+                    if (mobileItem.getStage() != item.getStage() || mobileItem.getDiff() != item.getDiff()
+                            || mobileItem.getDue() != item.getDue() || mobileItem.isMark() != item.isMark()) {
+                        item.setStage(mobileItem.getStage());
+                        item.setDiff(mobileItem.getDiff());
+                        item.setDue(mobileItem.getDue());
+                        item.setMark(mobileItem.isMark());
+                        toUpdate.add(mobileItem);
+                    }
                 }
+            } else {
+                // a new item, the override flag should be cleared
+                toUpdate.add(item);
             }
         });
-        // updates only stage and diff
-        dao.updateCharsOnSync(toUpdate);
-        return db;
-    }
-
-    private List<Word> mergeWords(List<Word> mobile, List<Word> db) {
-        if (mobile == null) {
-            mobile = new ArrayList<>();
-        }
-        Map<String, Word> mobileMap = mobile.stream().collect(Collectors.toMap(Word::getWord, Function.identity()));
-        List<Word> toUpdate = new ArrayList<>();
-        db.forEach((c) -> {
-            if (mobileMap.containsKey(c.getWord())) {
-                if (c.isOverride()) {
-                    toUpdate.add(c);
-                } else {
-                    Word m = mobileMap.get(c.getWord());
-                    c.setStage(m.getStage());
-                    c.setDiff(m.getDiff());
-                    toUpdate.add(c);
-                }
-            }
-        });
-        dao.updateWordsOnSync(toUpdate);
-        return db;
-    }
-
-    private List<Pinyin> mergePinyins(List<Pinyin> mobile, List<Pinyin> db) {
-        Map<String, Pinyin> mobileMap = mobile.stream().collect(Collectors.toMap(Pinyin::getWord, Function.identity()));
-        List<Pinyin> toUpdate = new ArrayList<>();
-        db.forEach((p) -> {
-            if (mobileMap.containsKey(p.getWord())) {
-                if (p.isOverride()) {
-                    toUpdate.add(p);
-                } else {
-                    Pinyin m = mobileMap.get(p.getWord());
-                    p.setStage(m.getStage());
-                    p.setDiff(m.getDiff());
-                    toUpdate.add(p);
-                }
-            }
-        });
-        dao.updatePinyinsOnSync(toUpdate);
+        dao.updateOnSync(toUpdate, m, p);
         return db;
     }
 
@@ -109,46 +84,39 @@ public class ZiService {
         }
     }
 
-    public MobileSyncData loadData() {
-        return new MobileSyncData(dao.loadChars(), dao.loadWords(), dao.loadPinyins());
+    @Transactional
+    public SyncData loadData() {
+        SyncData data = new SyncData();
+        data.setChars(dao.loadChars());
+        data.setPinyins(dao.loadPinyins());
+        data.setWords(dao.loadWords());
+        return data;
     }
 
-    public void upsertChar(Char c) {
-        if (dao.charExists(c)) {
-            dao.updateChar(c);
+    @Transactional
+    public void insertItem(ItemWrapper wrapper) {
+        if (wrapper.getType() == 'c') {
+            dao.insertChar(wrapper.getItem());
+        } else if (wrapper.getType() == 'p') {
+            dao.insertPinyin(wrapper.getItem());
+        } else if (wrapper.getType() == 'w') {
+            dao.insertWord(wrapper.getItem());
         } else {
-            dao.insertChar(c);
+            throw new RuntimeException("Unknown type: " + wrapper.getType());
         }
     }
 
-    public void upsertWord(Word w) {
-        if (dao.wordExists(w)) {
-            dao.updateWord(w);
+    @Transactional
+    public void updateItem(ItemWrapper wrapper) {
+        if (wrapper.getType() == 'c') {
+            dao.updateChar(wrapper.getItem());
+        } else if (wrapper.getType() == 'p') {
+            dao.updatePinyin(wrapper.getItem());
+        } else if (wrapper.getType() == 'w') {
+            dao.updateWord(wrapper.getItem());
         } else {
-            dao.insertWord(w);
+            throw new RuntimeException("Unknown type: " + wrapper.getType());
         }
-    }
-
-    public void upsertPinyin(Pinyin p) {
-        if (dao.pinyinExists(p)) {
-            dao.updatePinyin(p);
-        } else {
-            dao.insertPinyin(p);
-        }
-    }
-
-    public void setStage(String word, int stage, String type) {
-        if ("c".equals(type)) {
-            dao.setCharStage(word, stage);
-        } else if ("w".equals(type)) {
-            dao.setWordStage(word, stage);
-        } else if ("p".equals(type)) {
-            dao.setPinyinStage(word, stage);
-        }
-    }
-
-    public void wordsAnki() {
-        dao.wordsAnki();
     }
 
     public void backup(String json, boolean isMobile) {
