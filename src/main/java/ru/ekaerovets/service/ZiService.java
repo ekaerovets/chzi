@@ -1,5 +1,6 @@
 package ru.ekaerovets.service;
 
+import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -9,10 +10,9 @@ import ru.ekaerovets.model.Item;
 import ru.ekaerovets.model.ItemWrapper;
 import ru.ekaerovets.model.Stat;
 import ru.ekaerovets.model.SyncData;
+import sun.misc.IOUtils;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -128,6 +128,36 @@ public class ZiService {
             try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(path.toFile()), "UTF8")) {
                 out.write(json);
             } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public void snapshot(String dest, Gson gson) {
+        if (backupDir != null) {
+            String fName = dest + ".json";
+            Path path = Paths.get(backupDir, fName);
+            try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(path.toFile()), "UTF8")) {
+                out.write(gson.toJson(loadData()));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public void restore(String src, Gson gson) {
+        if (backupDir != null) {
+            String fName = src + ".json";
+            Path path = Paths.get(backupDir, fName);
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(path.toFile()), "UTF8"))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);
+                }
+                SyncData syncData = gson.fromJson(sb.toString(), SyncData.class);
+                dao.restoreFromSnapshot(syncData);
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }

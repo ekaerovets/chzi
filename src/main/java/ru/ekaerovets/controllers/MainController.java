@@ -99,4 +99,16 @@ public class MainController {
         return ResponseEntity.ok().build();
     }
 
+    @RequestMapping(method = RequestMethod.GET, value = "/snapshot/{index}")
+    public ResponseEntity<Void> snapshot(HttpServletResponse resp, @PathVariable String index) {
+        ziService.snapshot(index, gson);
+        return ResponseEntity.ok().build();
+    }
+
+    @RequestMapping(method = RequestMethod.GET, value = "/restore/{index}")
+    public ResponseEntity<Void> restore(HttpServletResponse resp, @PathVariable String index) {
+        ziService.restore(index, gson);
+        return ResponseEntity.ok().build();
+    }
+
 }

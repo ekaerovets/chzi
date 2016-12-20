@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import ru.ekaerovets.model.Item;
 import ru.ekaerovets.model.Stat;
+import ru.ekaerovets.model.SyncData;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
@@ -89,6 +90,12 @@ public class Dao {
         return jt.query("select * from words", WORD_ROW_MAPPER);
     }
 
+    public void deleteData() {
+        jt.update("delete from chars");
+        jt.update("delete from pinyins");
+        jt.update("delete from words");
+    }
+
     public void updateOnSync(List<Item> items, boolean m, boolean p) {
         String sql = "update ";
         if (m && p) {
@@ -129,6 +136,51 @@ public class Dao {
                 return items.size();
             }
         });
+    }
+
+    private static class InsertBatchPSSetter implements BatchPreparedStatementSetter {
+
+        private List<Item> items;
+        private boolean hasMeaning;
+        private boolean hasPinyin;
+
+        public InsertBatchPSSetter(List<Item> items, boolean hasMeaning, boolean hasPinyin) {
+            this.items = items;
+            this.hasMeaning = hasMeaning;
+            this.hasPinyin = hasPinyin;
+        }
+
+        @Override
+        public void setValues(PreparedStatement ps, int i) throws SQLException {
+            int index = 1;
+            Item item = items.get(i);
+            ps.setString(index++, item.getWord());
+            if (hasMeaning) {
+                ps.setString(index++, item.getMeaning());
+            }
+            if (hasPinyin) {
+                ps.setString(index++, item.getPinyin());
+            }
+            ps.setInt(index++, item.getStage());
+            ps.setInt(index++, item.getDiff());
+            ps.setInt(index++, item.getDue());
+            ps.setBoolean(index, item.isMark());
+        }
+
+        @Override
+        public int getBatchSize() {
+            return items.size();
+        }
+    }
+
+    public void restoreFromSnapshot(SyncData syncData) {
+        deleteData();
+        jt.batchUpdate("insert into chars(word, meaning, stage, diff, due, mark, override) VALUES (?, ?, ?, ?, ?, ?, false)",
+                new InsertBatchPSSetter(syncData.getChars(), true, false));
+        jt.batchUpdate("insert into pinyins(word, pinyin, stage, diff, due, mark, override) values (?, ?, ?, ?, ?, ?, false)",
+                new InsertBatchPSSetter(syncData.getPinyins(), false, true));
+        jt.batchUpdate("insert into words(word, meaning, pinyin, stage, diff, due, mark, override) values (?, ?, ?, ?, ?, ?, ?, false)",
+                new InsertBatchPSSetter(syncData.getWords(), true, true));
     }
 
     public void insertChar(Item item) {
