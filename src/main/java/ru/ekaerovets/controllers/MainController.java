@@ -67,14 +67,14 @@ public class MainController {
     }
 
     @RequestMapping(method = RequestMethod.POST, value = "/insert")
-    public ResponseEntity<Void> upsertChar(@RequestBody String input) {
+    public ResponseEntity<Void> insert(@RequestBody String input) {
         ItemWrapper wrapper = gson.fromJson(input, ItemWrapper.class);
         ziService.insertItem(wrapper);
         return ResponseEntity.ok().build();
     }
 
     @RequestMapping(method = RequestMethod.POST, value = "/update")
-    public ResponseEntity<Void> upsertWord(@RequestBody String input) {
+    public ResponseEntity<Void> update(@RequestBody String input) {
         ItemWrapper wrapper = gson.fromJson(input, ItemWrapper.class);
         ziService.updateItem(wrapper);
         return ResponseEntity.ok().build();

@@ -164,7 +164,8 @@ public class Dao {
             ps.setInt(index++, item.getStage());
             ps.setInt(index++, item.getDiff());
             ps.setInt(index++, item.getDue());
-            ps.setBoolean(index, item.isMark());
+            ps.setBoolean(index++, item.isMark());
+            ps.setBoolean(index, item.isOverride());
         }
 
         @Override
@@ -175,11 +176,11 @@ public class Dao {
 
     public void restoreFromSnapshot(SyncData syncData) {
         deleteData();
-        jt.batchUpdate("insert into chars(word, meaning, stage, diff, due, mark, override) VALUES (?, ?, ?, ?, ?, ?, false)",
+        jt.batchUpdate("insert into chars(word, meaning, stage, diff, due, mark, override) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 new InsertBatchPSSetter(syncData.getChars(), true, false));
-        jt.batchUpdate("insert into pinyins(word, pinyin, stage, diff, due, mark, override) values (?, ?, ?, ?, ?, ?, false)",
+        jt.batchUpdate("insert into pinyins(word, pinyin, stage, diff, due, mark, override) values (?, ?, ?, ?, ?, ?, ?)",
                 new InsertBatchPSSetter(syncData.getPinyins(), false, true));
-        jt.batchUpdate("insert into words(word, meaning, pinyin, stage, diff, due, mark, override) values (?, ?, ?, ?, ?, ?, ?, false)",
+        jt.batchUpdate("insert into words(word, meaning, pinyin, stage, diff, due, mark, override) values (?, ?, ?, ?, ?, ?, ?, ?)",
                 new InsertBatchPSSetter(syncData.getWords(), true, true));
     }
 
