@@ -157,10 +157,7 @@
     <!-- Word info -->
     <div id="wpPanel">
         <div class="word-right">
-            <span class="word-component">&#20999;(qie) to cut</span>
-            <span class="word-component">&#22312;(zai) here</span>
-            <span class="word-component">&#31209;(qie) to cut</span>
-            <span class="word-component">&#24207;(qie) to cut</span>
+            <textarea id="wpExample"></textarea>
         </div>
         <div class="word-left">
             <span id="wpWord" class="word">&#20999;&#22312;&#31209;&#24207;</span>
@@ -170,18 +167,31 @@
                 <span id="wpHsk" class="freq-span"></span>
             </div>
             <div class="word-edit">
-                <div class="row">
-                        <span id="wpMeanWrapper" class="center">
-                            <input id="wpMeanInput" type="text">
+                <div id="wpCharSave" class="fake-input" style="margin-left: 0">
+                    <img id="wpCharSaveImg" src="img/tick.png" class="fake-input-tick">
+                        <span class="center">
+                            <input id="wpCharEditInput" type="text">
                         </span>
-                    <span id="wpMeanSpan" class="meaning" style="margin:0"></span>
+                </div>
+                <div id="wpCharView" class="meaning hidden">
+                    <img id="wpMeanEditImg" src="img/tick.png" class="right">
+                    <span id="wpCharViewSpan"></span>
                 </div>
                 <div class="row">
-                    <input id="wpButton" type="button" class="right" value="Edit">
-                        <span id="wpPinWrapper" class="center">
-                            <input id="wpPinInput" type="text">
+                    <div class="pick-stage">
+                        <input id="wpPinNew" type="button" value="N" style="background: #75e075" class="stage-button">
+                        <input id="wpPinQueue" type="button" value="Q" style="background: #f796ef" class="stage-button">
+                        <input id="wpPinTrivia" type="button" value="T" style="background: #aeacf5" class="stage-button">
+                        <span id="wpPinStatSpan" class="stat-span"></span>
+                    </div>
+                    <div id="wpPinSave" class="fake-input">
+                        <span class="center">
+                            <input id="wpPinEditInput" type="text">
                         </span>
-                    <span id="wpPinSpan" class="word-meaning"></span>
+                    </div>
+                    <div id="wpPinView" class="meaning hidden">
+                        <span id="wpPinViewSpan"></span>
+                    </div>
                 </div>
             </div>
         </div>

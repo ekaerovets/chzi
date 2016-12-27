@@ -47,14 +47,14 @@ body {
     text-align: center;
 }
 
-#cpExample {
+#cpExample #wpExample {
     width: 100%;
     height: 90px;
     border: none;
     resize: none;
 }
 
-#cpExample:focus {
+#cpExample:focus #wpExample:focus {
     outline: 0;
 }
 

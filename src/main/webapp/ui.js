@@ -7,7 +7,7 @@
 
     this.selection = "";
 
-    this.options = {c: true, p: true, w: true, d: false};
+    this.options = {c: true, p: true, w: true, d: true};
 
     /* ==============================
     ======== UTIL FUNCTIONS =========
@@ -43,6 +43,9 @@
                             }
                         },
                         get: function(target, name) {
+                            if (name == "this") {
+                                return el;
+                            }
                             return el[name];
                         }
                     });
@@ -89,7 +92,7 @@
     _.tpNew.onclick = function() {
         _.ovOverlay.visible = true;
         _.ovNewText.visible = true;
-        _.newText.focus();
+        _.newText.this.focus();
     }
 
     _.btnNewText.onclick = function() {
@@ -99,6 +102,10 @@
         _.ovNewText.visible = false;
     };
 
+
+    _.ovDict.onblur = function() {
+       _.ovDict.visible = false;
+    };
 
     /* ==========================
     = DATA PROCESSING FUNCTIONS =
@@ -211,24 +218,24 @@
     };
 
     this.setupWord = function(word) {
-        let wordInfo = that.dataHolder.getWordHsk(word);
-        that.wpWord.textContent = word;
-        that.wpHsk.textContent = wordInfo.hsk ? "HSK" + wordInfo.hsk : "--";
+        let wordInfo = that.dataHolder.getWord(word);
+        _.wpWord.value = word;
+        _.wpHsk.value = wordInfo.hsk ? "HSK" + wordInfo.hsk : "--";
         let w = wordInfo.word;
         if (w) {
             if (w.diff > 0) {
-                that.wpStage.textContent = that.formatDiff(w.diff);
+                _.wpStage.value = that.formatDiff(w.diff);
             } else {
-                that.wpStage.textContent = w.stage == STAGE_LEARN ? "Q" : "T";
+                _.wpStage.value = w.stage == STAGE_LEARN ? "Q" : "T";
             }
         } else {
-            that.wpStage.textContent = "--";
+            _.wpStage.value = "--";
         }
 
-        that.showhide(that.wpMeanWrapper, !w);
-        that.showhide(that.wpPinWrapper, !w);
-        that.showhide(that.wpMeanSpan, w);
-        that.showhide(that.wpPinSpan, w);
+        _.wpMeanWrapper.visible = !w;
+        _.wpPinWrapper.visible = !w;
+        _.wpMeanSpan.visible, w;
+        _.wpPinSpan.visible = w;
         that.wordEdit = !w;
         that.wpButton.disabled = !w;
         that.wpButton.value = w ? "Edit" : "Save";
@@ -252,7 +259,7 @@
         if (text.length == 1) {
             that.setupChar(text);
         } else if (text.length > 1 && text.length < 7) {
-            that.setupWord(text);
+         //   that.setupWord(text);
         }
     };
 
@@ -280,7 +287,7 @@
         var res = "";
         res += "<div class='dict-pinyin'>";
         let word = obj.word;
-        if (word.length > 1 && word.length <= 6 && !that.dataHolder.getWordHsk(obj.word).word) {
+        if (word.length > 1 && word.length <= 6 && !that.dataHolder.getWord(obj.word).word) {
             res += '<span onclick=\'document.getElementById("wpPinInput").value = "' +
                 obj.pinyin + '"\' class="copy-pinyin">&nearr;</span>';
         }
@@ -303,7 +310,7 @@
         _.ovDict.style.left = l + "px";
         _.ovDict.value = that.dictFormat(res);
         _.ovDict.visible = true;
-        _.ovDict.focus();
+        _.ovDict.this.focus();
     };
 
 
@@ -475,9 +482,7 @@
         that.showhide(that.ovNewText, false);
     };
 
-    this.dictBlur = function() {
-        that.showhide(that.ovDict, false);
-    };
+
 
     this.ovStageBlur = function() {
         that.showhide(that.ovStage, false);
